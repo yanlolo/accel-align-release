@@ -1577,14 +1577,14 @@ void AccAlign::score_region(Read &r, char *strand, Region &region,
 
 
   // if the region has a embed distance of 0, then its an exact match
-  if (!region.embed_dist || !toExtend) {
-    // we found an exact match
-    region.is_exact = true;
-
-    // XXX: the scoring here of setting it to len is based on the
-    // assumption that our current ssw impl. gives a best score of 150
-    region.score = len;
-  } else {
+//  if (!region.embed_dist || !toExtend) {
+//    // we found an exact match
+//    region.is_exact = true;
+//
+//    // XXX: the scoring here of setting it to len is based on the
+//    // assumption that our current ssw impl. gives a best score of 150
+//    region.score = len;
+//  } else {
     region.is_exact = false;
     const char *ptr_ref = ref.c_str() + region.beg;
     const char *ptr_read = strand;
@@ -1621,7 +1621,7 @@ void AccAlign::score_region(Read &r, char *strand, Region &region,
     a.ref_begin = 0;
     region.score = a.sw_score = ez.score;
     a.mismatches = edit_mismatch;
-  }
+//  }
 
   region.is_aligned = true;
 }
