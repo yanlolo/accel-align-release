@@ -1023,19 +1023,63 @@ void AccAlign::map_paired_read(Read &mate1, Read &mate2) {
   // But before, rearrange so that regions with high coverage are at the top
   //no need to swap, just embed the best and next first..
   start = std::chrono::system_clock::now();
-  embed_wrapper_pair(mate1, mate2,
-                     fcandidate_regions1, rcandidate_regions1,
-                     fcandidate_regions2, rcandidate_regions2,
-                     flag_f1, flag_r1, flag_f2, flag_r2,
-                     fbest1, fnext1, rbest1, rnext1,
-                     fbest2, fnext2, rbest2, rnext2);
+//  embed_wrapper_pair(mate1, mate2,
+//                     fcandidate_regions1, rcandidate_regions1,
+//                     fcandidate_regions2, rcandidate_regions2,
+//                     flag_f1, flag_r1, flag_f2, flag_r2,
+//                     fbest1, fnext1, rbest1, rnext1,
+//                     fbest2, fnext2, rbest2, rnext2);
+
+//  gettimeofday(&end, NULL);
+//  embedding_time += compute_elapsed(&start, &end);
+//
+  for (unsigned i = 0; i < nfregions1; i++) {
+    if (!flag_f1[i])   continue;
+    Region &r = fcandidate_regions1[i];
+    r.beg = r.pos;
+
+    char *s = mate1.fwd;
+    Alignment a;
+    score_region(mate1, s, r, a);
+  }
+
+  for (unsigned i = 0; i < nrregions1; i++) {
+    if (!flag_r1[i])   continue;
+    Region &r = rcandidate_regions1[i];
+    r.beg = r.pos;
+
+    char *s = mate1.rev;
+    Alignment a;
+    score_region(mate1, s, r, a);
+  }
+
+  for (unsigned i = 0; i < nfregions2; i++) {
+    if (!flag_f2[i])   continue;
+    Region &r = fcandidate_regions2[i];
+    r.beg = r.pos;
+
+    char *s = mate2.fwd;
+    Alignment a;
+    score_region(mate2, s, r, a);
+  }
+
+  for (unsigned i = 0; i < nrregions2; i++) {
+    if (!flag_r2[i])   continue;
+    Region &r = rcandidate_regions2[i];
+    r.beg = r.pos;
+
+    char *s = mate2.rev;
+    Alignment a;
+    score_region(mate2, s, r, a);
+  }
+
   delete[] flag_f1;
   delete[] flag_r1;
   delete[] flag_f2;
   delete[] flag_r2;
-  end = std::chrono::system_clock::now();
-  elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-  embedding_time += elapsed.count();
+//  end = std::chrono::system_clock::now();
+//  elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+//  embedding_time += elapsed.count();
 
   // finally, pick regions for further extension. here, we make use of pairing
   // again by first checking overall, across mate1 and mate2, who has lowest
@@ -1044,7 +1088,7 @@ void AccAlign::map_paired_read(Read &mate1, Read &mate2) {
   // mate, and vice versa.
   start = std::chrono::system_clock::now();
 
-  int min_dist_f1r2 = INT_MAX, min_dist = INT_MAX, secmin_dist = INT_MAX;
+  int min_dist_f1r2 = INT_MIN, min_dist = INT_MIN, secmin_dist = INT_MIN;
   Region best_fregion, best_rregion;
 
   for (unsigned i = 0; i < nfregions1; i++) {
@@ -1064,13 +1108,13 @@ void AccAlign::map_paired_read(Read &mate1, Read &mate2) {
     );
 
     for (auto itr = start; itr != end; ++itr) {
-      int sum_embed_dist = fcandidate_regions1[i].embed_dist + itr->embed_dist;
-      if (sum_embed_dist < min_dist) {
+      int sum_embed_dist = fcandidate_regions1[i].score + itr->score;
+      if (sum_embed_dist > min_dist) {
         secmin_dist = min_dist;
         min_dist = sum_embed_dist;
         best_fregion = fcandidate_regions1[i];
         best_rregion = *itr;
-      } else if (sum_embed_dist < secmin_dist) {
+      } else if (sum_embed_dist > secmin_dist) {
         secmin_dist = sum_embed_dist;
       }
     }
@@ -1094,13 +1138,13 @@ void AccAlign::map_paired_read(Read &mate1, Read &mate2) {
     );
 
     for (auto itr = start; itr != end; ++itr) {
-      int sum_embed_dist = rcandidate_regions1[i].embed_dist + itr->embed_dist;
-      if (sum_embed_dist < min_dist) {
+      int sum_embed_dist = rcandidate_regions1[i].score + itr->score;
+      if (sum_embed_dist > min_dist) {
         secmin_dist = min_dist;
         min_dist = sum_embed_dist;
         best_fregion = *itr;
         best_rregion = rcandidate_regions1[i];
-      } else if (sum_embed_dist < secmin_dist) {
+      } else if (sum_embed_dist > secmin_dist) {
         secmin_dist = sum_embed_dist;
       }
     }
@@ -1108,7 +1152,7 @@ void AccAlign::map_paired_read(Read &mate1, Read &mate2) {
 
 
   // if there is no candidates, the strand will remain *
-  if (min_dist < INT_MAX) {
+  if (min_dist > INT_MIN) {
     if (min_dist_f1r2 == min_dist) {
       mark_for_extension(mate1, '+', best_fregion);
       mark_for_extension(mate2, '-', best_rregion);
@@ -1123,7 +1167,7 @@ void AccAlign::map_paired_read(Read &mate1, Read &mate2) {
 
     int mapq;
     size_t max_hamming = strlen(mate1.seq) * embedding->efactor * 2; //*2 because it's the sum of embed dist
-    if (secmin_dist < INT_MAX)
+    if (secmin_dist > INT_MIN)
       mapq = get_mapq(min_dist, secmin_dist, true, max_hamming);
     else
       mapq = get_mapq(min_dist, 0, false, max_hamming);
