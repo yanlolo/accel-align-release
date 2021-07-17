@@ -195,14 +195,14 @@ void Embedding::embeddata_pair(vector<Region> &candidate_regions, char embeddedQ
 void Embedding::embeddata_iterative_update(vector<Region> &candidate_regions,
                                            const char **input, unsigned ninput, unsigned rlen,
                                            int &best_threshold, int &next_threshold,
-                                           bool max_rnd, unsigned &best_idx, unsigned &next_idx) {
+                                           unsigned &best_idx, unsigned &next_idx) {
   int step = 1;
   int elen = rlen * efactor;
   char embeddedQ[elen];
 
   // do first candidate
   auto start = std::chrono::system_clock::now();
-  int nmismatch = 0;
+  int nmismatch;
   if (best_threshold == 0 && next_threshold == 0) {
     // if we already have 2 exact match (one for best, one for second best for mapq), look for exact matches only
     nmismatch = (memcmp(input[1], input[0], rlen) == 0 ? 0 : elen);

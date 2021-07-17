@@ -13,7 +13,7 @@ class Embedding {
   void embeddata_iterative_update(vector<Region> &candidate_regions,
                                   const char **input, unsigned ninput, unsigned rlen,
                                   int &best_threshold, int &next_threshold,
-                                  bool max_rnd, unsigned &best_idx, unsigned &next_idx);
+                                  unsigned &best_idx, unsigned &next_idx);
   void embeddata_pair(vector<Region> &candidate_regions, char embeddedQ[],
                       const char **candidate_refs, unsigned ncandidates, bool flag[],
                       unsigned rlen, int threshold);

@@ -392,7 +392,7 @@ void AccAlign::lsh_filter(char *Q, size_t rlen,
 
   // now do embedding
   embedding->embeddata_iterative_update(candidate_regions, candidate_refs, ncandidates + 1,
-                                        rlen, best_threshold, next_threshold, true, best_idx, next_idx);
+                                        rlen, best_threshold, next_threshold, best_idx, next_idx);
 
   delete[] candidate_refs;
 }
@@ -871,6 +871,8 @@ void AccAlign::map_read(Read &R) {
   pghole_wrapper(R, fcandidate_regions, rcandidate_regions, fbest, rbest, 0);
   unsigned nfregions = fcandidate_regions.size();
   unsigned nrregions = rcandidate_regions.size();
+
+
   end = std::chrono::system_clock::now();
   elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
   seeding_time += elapsed.count();
