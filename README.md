@@ -34,6 +34,7 @@ It's mandatory to build the index before alignment. Options:
 -l INT the length of k-mers [32]
 ```
 
+
 Example:
 
 ```
