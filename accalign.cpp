@@ -750,27 +750,27 @@ void AccAlign::pghole_wrapper(Read &R,
 
       unsigned nkmers = (rlen - ori_slide - kmer_len) / kmer_step + 1;
 
-    if (nkmers < 4) {
-      //nkmer 3, 2, 1, top 2 cov of cov >=2, is 3, 2, is as same as cov>=2
-      // as cov2 is faster than top2, use cov2
-      pigeonhole_query(R.fwd, rlen, fcandidate_regions, '+', fbest, ori_slide, 2, kmer_step, MAX_OCC, high_freq, ref_id);
-      pigeonhole_query(R.rev, rlen, rcandidate_regions, '-', rbest, ori_slide, 2, kmer_step, MAX_OCC, high_freq, ref_id);
-    } else {
-      pigeonhole_query_topcov(R.fwd, rlen, fcandidate_regions, '+', 2, kmer_step, MAX_OCC, fbest, ori_slide, ref_id);
-      pigeonhole_query_topcov(R.rev, rlen, rcandidate_regions, '-', 2, kmer_step, MAX_OCC, rbest, ori_slide, ref_id);
-    }
-      nfregions = fcandidate_regions.size();
-      nrregions = rcandidate_regions.size();
-
-      if (!nfregions && !nrregions) {
-        pigeonhole_query(R.fwd, rlen, fcandidate_regions, '+', fbest, ori_slide, 1, kmer_step, MAX_OCC, high_freq, ref_id);
-        pigeonhole_query(R.rev, rlen, rcandidate_regions, '-', rbest, ori_slide, 1, kmer_step, MAX_OCC, high_freq, ref_id);
+      if (nkmers < 4) {
+        //nkmer 3, 2, 1, top 2 cov of cov >=2, is 3, 2, is as same as cov>=2
+        // as cov2 is faster than top2, use cov2
+        pigeonhole_query(R.fwd, rlen, fcandidate_regions, '+', fbest, ori_slide, 2, kmer_step, MAX_OCC, high_freq, ref_id);
+        pigeonhole_query(R.rev, rlen, rcandidate_regions, '-', rbest, ori_slide, 2, kmer_step, MAX_OCC, high_freq, ref_id);
+      } else {
+        pigeonhole_query_topcov(R.fwd, rlen, fcandidate_regions, '+', 2, kmer_step, MAX_OCC, fbest, ori_slide, ref_id);
+        pigeonhole_query_topcov(R.rev, rlen, rcandidate_regions, '-', 2, kmer_step, MAX_OCC, rbest, ori_slide, ref_id);
+      }
         nfregions = fcandidate_regions.size();
         nrregions = rcandidate_regions.size();
-      }
 
-      R.kmer_step = kmer_step;
-      ori_slide++;
+        if (!nfregions && !nrregions) {
+          pigeonhole_query(R.fwd, rlen, fcandidate_regions, '+', fbest, ori_slide, 1, kmer_step, MAX_OCC, high_freq, ref_id);
+          pigeonhole_query(R.rev, rlen, rcandidate_regions, '-', rbest, ori_slide, 1, kmer_step, MAX_OCC, high_freq, ref_id);
+          nfregions = fcandidate_regions.size();
+          nrregions = rcandidate_regions.size();
+        }
+
+        R.kmer_step = kmer_step;
+        ori_slide++;
 //    kmer_step = kmer_step / 2;
     }
   }
@@ -1116,47 +1116,48 @@ void AccAlign::fetch_candidates(mm128_v &mv, int32_t mid_occ, size_t rlen, int e
 //  }
 //}
 
-void AccAlign::pigeonhole_query(char *Q,
-                                size_t rlen,
+void AccAlign::pigeonhole_query(char *query,
+                                size_t read_length,
                                 vector<Region> &candidate_regions,
-                                char S,
+                                char strand,
                                 unsigned &best,
-                                unsigned ori_slide,
-                                int err_threshold,
+                                unsigned ori_slide, // Meaning/Purpose ?
+                                int err_threshold, // Meaning/Purpose ?
                                 unsigned kmer_step,
-                                unsigned max_occ,
-                                bool &high_freq, int ref_id) {
-  int max_cov = 0;
-  unsigned nkmers = (rlen - ori_slide - kmer_len) / kmer_step + 1;
+                                unsigned max_occ, // Meaning/Purpose ?
+                                bool &high_freq, // Meaning/Purpose ?
+                                int reference_id) {
+  int max_coverage = 0;
+  unsigned nkmers = (read_length - ori_slide - kmer_len) / kmer_step + 1;
   size_t ntotal_hits = 0;
-  size_t b[nkmers], e[nkmers];
-  unsigned kmer_idx = 0;
-  unsigned nseed_freq = 0;
+  size_t b[nkmers], e[nkmers]; // Meaning/Purpose ?
+  unsigned kmer_idx = 0; // Meaning/Purpose ?
+  unsigned nseed_freq = 0; // Meaning/Purpose ?
 
   // Take non-overlapping seeds and find all hits
   auto start = std::chrono::system_clock::now();
-  for (size_t i = ori_slide; i + kmer_len <= rlen; i += kmer_step) {
-    uint64_t k = 0;
+  for (size_t i = ori_slide; i + kmer_len <= read_length; i += kmer_step) {
+    uint64_t k = 0; // Meaning/Purpose ?
     for (size_t j = i; j < i + kmer_len; j++)
-      k = (k << 2) + *(Q + j);
-    size_t hash = (k & mask) % MOD;
-    b[kmer_idx] = get_keyv(ref_id)[hash];
-    e[kmer_idx] = get_keyv(ref_id)[hash + 1];
-    if (e[kmer_idx] - b[kmer_idx] >= max_occ)
+      k = (k << 2) + *(query + j); // Meaning/Purpose ?
+    size_t hash = (k & mask) % MOD; // Meaning/Purpose ?
+    b[kmer_idx] = get_keyv(reference_id)[hash]; // Meaning/Purpose ?
+    e[kmer_idx] = get_keyv(reference_id)[hash + 1]; // Meaning/Purpose ?
+    if (e[kmer_idx] - b[kmer_idx] >= max_occ) // Meaning/Purpose ?
       nseed_freq++;
-    kmer_idx++;
+    kmer_idx++; // Meaning/Purpose ?
   }
   assert(kmer_idx == nkmers);
   auto end = std::chrono::system_clock::now();
   auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
   keyvTime += elapsed.count();
 
-  if (nseed_freq > nkmers / 2)
+  if (nseed_freq > nkmers / 2) // Meaning/Purpose ?
     high_freq = true;
 
   for (size_t i = 0; i < nkmers; i++) {
-    if ((!high_freq && e[i] - b[i] < max_occ) || high_freq)
-      ntotal_hits += (e[i] - b[i]);
+    if ((!high_freq && e[i] - b[i] < max_occ) || high_freq) // Meaning/Purpose ?
+      ntotal_hits += (e[i] - b[i]); // Meaning/Purpose ?
   }
 
   // if we have no hits, we are done
@@ -1170,7 +1171,7 @@ void AccAlign::pigeonhole_query(char *Q,
   // initialize top values with first values for each kmer.
   for (unsigned i = 0; i < nkmers; i++) {
     if (b[i] < e[i] && ((!high_freq && e[i] - b[i] < max_occ) || high_freq)) {
-      top_pos[i] = get_posv(ref_id)[b[i]];
+      top_pos[i] = get_posv(reference_id)[b[i]];
       rel_off[i] = i * kmer_step;
       uint32_t shift_pos = rel_off[i] + ori_slide;
       top_pos[i] -= min(top_pos[i], shift_pos); //pos can't <0, e.g. insertion before this kmer, set 0 instead of -1
@@ -1184,12 +1185,12 @@ void AccAlign::pigeonhole_query(char *Q,
 
   size_t nprocessed = 0;
   uint32_t last_pos = MAX_POS, last_qs = ori_slide; //last query start pos
-  int last_cov = 0;
+  int last_coverage = 0;
 
   start = std::chrono::system_clock::now();
 
-  Region r;
-  r.matched_intervals.reserve(nkmers);
+  Region region;
+  region.matched_intervals.reserve(nkmers);
   while (nprocessed < ntotal_hits) {
     //find min
     uint32_t *min_item = min_element(top_pos, top_pos + nkmers);
@@ -1198,31 +1199,31 @@ void AccAlign::pigeonhole_query(char *Q,
 
     if ((!high_freq && e[min_kmer] - b[min_kmer] < max_occ) || high_freq) {
       // kick off prefetch for next round
-      __builtin_prefetch(get_posv(ref_id) + b[min_kmer] + 1);
+      __builtin_prefetch(get_posv(reference_id) + b[min_kmer] + 1);
 
       // if previous min element was same as current one, increment coverage.
       // otherwise, check if last min element's coverage was high enough to make it a candidate region
       if (min_pos == last_pos) {
-        r.matched_intervals.push_back(Interval{last_qs, last_qs + kmer_len});
-        last_cov++;
+        region.matched_intervals.push_back(Interval{last_qs, last_qs + kmer_len});
+        last_coverage++;
       } else {
-        if (last_cov >= err_threshold) {
-          r.cov = last_cov;
-          r.rs = last_pos;
-          r.matched_intervals.push_back(Interval{last_qs, last_qs + kmer_len});
-          r.qs = r.matched_intervals[0].s; //let it be the first match seed, so the left extension could be accurate
-          r.qe = r.qs + kmer_len;
+        if (last_coverage >= err_threshold) {
+          region.cov = last_coverage;
+          region.rs = last_pos;
+          region.matched_intervals.push_back(Interval{last_qs, last_qs + kmer_len});
+          region.qs = region.matched_intervals[0].s; //let it be the first match seed, so the left extension could be accurate
+          region.qe = region.qs + kmer_len;
 
-          if (last_cov >= max_cov) {
-            max_cov = last_cov;
+          if (last_coverage >= max_coverage) {
+            max_coverage = last_coverage;
             best = candidate_regions.size();
           }
 
-          assert(r.rs < MAX_POS);
-          candidate_regions.push_back(move(r));
+          assert(region.rs < MAX_POS);
+          candidate_regions.push_back(move(region));
         }
 
-        last_cov = 1;
+        last_coverage = 1;
       }
       last_qs = min_kmer * kmer_step + ori_slide;
       last_pos = min_pos;
@@ -1230,7 +1231,7 @@ void AccAlign::pigeonhole_query(char *Q,
 
     // add next element
     b[min_kmer]++;
-    uint32_t next_pos = b[min_kmer] < e[min_kmer] ? get_posv(ref_id)[b[min_kmer]] : MAX_POS;
+    uint32_t next_pos = b[min_kmer] < e[min_kmer] ? get_posv(reference_id)[b[min_kmer]] : MAX_POS;
     if (next_pos != MAX_POS) {
       uint32_t shift_pos = rel_off[min_kmer] + ori_slide;
       *min_item = next_pos - min(next_pos, shift_pos);
@@ -1243,20 +1244,20 @@ void AccAlign::pigeonhole_query(char *Q,
 
   // we will have the last few positions not processed. check here.
   if (last_pos != MAX_POS) {
-    if (last_cov >= err_threshold) {
-      r.cov = last_cov;
-      r.rs = last_pos;
-      r.matched_intervals.push_back(Interval{last_qs, last_qs + kmer_len});
-      r.qs = r.matched_intervals[0].s; //let it be the first match seed, so the left extension could be accurate
-      r.qe = r.qs + kmer_len;
+    if (last_coverage >= err_threshold) {
+      region.cov = last_coverage;
+      region.rs = last_pos;
+      region.matched_intervals.push_back(Interval{last_qs, last_qs + kmer_len});
+      region.qs = region.matched_intervals[0].s; //let it be the first match seed, so the left extension could be accurate
+      region.qe = region.qs + kmer_len;
 
-      if (last_cov >= max_cov) {
-        max_cov = last_cov;
+      if (last_coverage >= max_coverage) {
+        max_coverage = last_coverage;
         best = candidate_regions.size();
       }
 
-      assert(r.rs < MAX_POS);
-      candidate_regions.push_back(move(r));
+      assert(region.rs < MAX_POS);
+      candidate_regions.push_back(move(region));
     }
   }
 
