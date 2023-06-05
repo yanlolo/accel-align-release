@@ -390,6 +390,124 @@ void StrobemerIndex::print_diagnostics(const std::string& logfile_name, int k) c
 
 int main(int ac, char **av) {
 
-  std::cerr << "Reached empty index main method \n";
+  bool debug = true;
+
+  if(!debug) {
+    auto opt = parse_command_line_arguments(argc, argv);
+
+    logger.set_level(opt.verbose ? LOG_DEBUG : LOG_INFO);
+    logger.info() << std::setprecision(2) << std::fixed;
+    logger.info() << "This is accel-align using strobealign indexing " << '\n';
+
+    if (opt.c >= 64 || opt.c <= 0) {
+      throw BadParameter("c must be greater than 0 and less than 64");
+    }
+
+    InputBuffer input_buffer = get_input_buffer(opt);
+    if (!opt.r_set && !opt.reads_filename1.empty()) {
+      opt.r = estimate_read_length(input_buffer);
+      logger.info() << "Estimated read length: " << opt.r << " bp\n";
+    }
+    input_buffer.rewind_reset();
+    IndexParameters index_parameters = IndexParameters::from_read_length(
+            opt.r,
+            opt.k_set ? opt.k : IndexParameters::DEFAULT,
+            opt.s_set ? opt.s : IndexParameters::DEFAULT,
+            opt.l_set ? opt.l : IndexParameters::DEFAULT,
+            opt.u_set ? opt.u : IndexParameters::DEFAULT,
+            opt.c_set ? opt.c : IndexParameters::DEFAULT,
+            opt.max_seed_len_set ? opt.max_seed_len : IndexParameters::DEFAULT
+    );
+    logger.debug() << index_parameters << '\n';
+    alignment_params aln_params;
+    aln_params.match = opt.A;
+    aln_params.mismatch = opt.B;
+    aln_params.gap_open = opt.O;
+    aln_params.gap_extend = opt.E;
+    aln_params.end_bonus = opt.end_bonus;
+
+    mapping_params map_param;
+    map_param.r = opt.r;
+    map_param.max_secondary = opt.max_secondary;
+    map_param.dropoff_threshold = opt.dropoff_threshold;
+    map_param.R = opt.R;
+    map_param.maxTries = opt.maxTries;
+    map_param.is_sam_out = opt.is_sam_out;
+    map_param.cigar_eqx = opt.cigar_eqx;
+    map_param.output_unmapped = opt.output_unmapped;
+
+    log_parameters(index_parameters, map_param, aln_params);
+    logger.debug() << "Threads: " << opt.n_threads << std::endl;
+
+//    assert(k <= (w/2)*w_min && "k should be smaller than (w/2)*w_min to avoid creating short strobemers");
+
+    // Create index
+    References references;
+    Timer read_refs_timer;
+    references = References::from_fasta(opt.ref_filename);
+    logger.info() << "Time reading reference: " << read_refs_timer.elapsed() << " s\n";
+
+    logger.info() << "Reference size: " << references.total_length() / 1E6 << " Mbp ("
+                  << references.size() << " contig" << (references.size() == 1 ? "" : "s")
+                  << "; largest: "
+                  << (*std::max_element(references.lengths.begin(), references.lengths.end()) / 1E6) << " Mbp)\n";
+    if (references.total_length() == 0) {
+      throw InvalidFasta("No reference sequences found");
+    }
+
+    StrobemerIndex index(references, index_parameters);
+    if (opt.use_index) {
+      // Read the index from a file
+      assert(!opt.only_gen_index);
+      Timer read_index_timer;
+      std::string sti_path = opt.ref_filename + index_parameters.filename_extension();
+      logger.info() << "Reading index from " << sti_path << '\n';
+      index.read(sti_path);
+      logger.info() << "Total time reading index: " << read_index_timer.elapsed() << " s\n";
+    } else {
+      logger.info() << "Indexing ...\n";
+      Timer index_timer;
+      index.populate(opt.f, opt.n_threads);
+
+      logger.info() << "  Time generating seeds: " << index.stats.elapsed_generating_seeds.count() << " s" <<  std::endl;
+      logger.info() << "  Time estimating number of unique hashes: " << index.stats.elapsed_unique_hashes.count() << " s" <<  std::endl;
+      logger.info() << "  Time sorting non-unique seeds: " << index.stats.elapsed_sorting_seeds.count() << " s" <<  std::endl;
+      logger.info() << "  Time generating hash table index: " << index.stats.elapsed_hash_index.count() << " s" <<  std::endl;
+      logger.info() << "Total time indexing: " << index_timer.elapsed() << " s\n";
+
+      logger.debug()
+              << "Unique strobemers: " << index.stats.unique_mers << std::endl
+              << "Total strobemers count: " << index.stats.tot_strobemer_count << std::endl
+              << "Total strobemers occur once: " << index.stats.tot_occur_once << std::endl
+              << "Fraction Unique: " << index.stats.frac_unique << std::endl
+              << "Total strobemers highly abundant > 100: " << index.stats.tot_high_ab << std::endl
+              << "Total strobemers mid abundance (between 2-100): " << index.stats.tot_mid_ab << std::endl
+              << "Total distinct strobemers stored: " << index.stats.tot_distinct_strobemer_count << std::endl;
+      if (index.stats.tot_high_ab >= 1) {
+        logger.debug() << "Ratio distinct to highly abundant: " << index.stats.tot_distinct_strobemer_count / index.stats.tot_high_ab << std::endl;
+      }
+      if (index.stats.tot_mid_ab >= 1) {
+        logger.debug() << "Ratio distinct to non distinct: " << index.stats.tot_distinct_strobemer_count / (index.stats.tot_high_ab + index.stats.tot_mid_ab) << std::endl;
+      }
+      logger.debug() << "Filtered cutoff index: " << index.stats.index_cutoff << std::endl;
+      logger.debug() << "Filtered cutoff count: " << index.stats.filter_cutoff << std::endl;
+
+      if (!opt.logfile_name.empty()) {
+        index.print_diagnostics(opt.logfile_name, index_parameters.k);
+        logger.debug() << "Finished printing log stats" << std::endl;
+      }
+      if (opt.only_gen_index) {
+        Timer index_writing_timer;
+        std::string sti_path = opt.ref_filename + index_parameters.filename_extension();
+        logger.info() << "Writing index to " << sti_path << '\n';
+        index.write(opt.ref_filename + index_parameters.filename_extension());
+        logger.info() << "Total time writing index: " << index_writing_timer.elapsed() << " s\n";
+        return EXIT_SUCCESS;
+      }
+    }
+  }
+
+
+
 
 }

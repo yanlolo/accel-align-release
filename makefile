@@ -9,7 +9,7 @@ endif
 ACCLDFLAGS=./WFA-paper/build/libwfa.a -lz -ltbb
 TARGETS=accindex accalign
 CPUSRC=reference.cpp accalign.cpp embedding.cpp ksw2_extz2_sse.c bseq.c index.c kthread.c kalloc.c sketch.c misc.c options.c seed.c
-IDXSRC=index.cpp embedding.cpp bseq.c index.c kthread.c kalloc.c sketch.c misc.c options.c indexparameters.cpp io.cpp randstrobes.cpp ./ext/xxhash.c
+IDXSRC=index.cpp embedding.cpp bseq.c index.c kthread.c kalloc.c sketch.c misc.c options.c indexparameters.cpp io.cpp randstrobes.cpp ./ext/xxhash.c pc.cpp sam.cpp cigar.cpp aln.cpp aligner.cpp fastq.cpp nam.cpp paf.cpp
 HEADERS=$(wildcard *.h)
 HEADERSHPP=$(wildcard *.hpp)
 
