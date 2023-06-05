@@ -13,6 +13,13 @@
 #include "timer.hpp"
 #include "logger.hpp"
 
+#include "refs.hpp"
+#include "exceptions.hpp"
+#include "cmdline.hpp"
+#include "pc.hpp"
+#include "aln.hpp"
+#include "readlen.hpp"
+
 
 static Logger& logger = Logger::get();
 
@@ -388,7 +395,27 @@ void StrobemerIndex::print_diagnostics(const std::string& logfile_name, int k) c
   log_file << median << ',' << tot_seed_count << ',' << e_hits << ',' << 100*fraction_masked << std::endl;
 }
 
-int main(int ac, char **av) {
+
+void log_parameters(const IndexParameters& index_parameters, const mapping_params& map_param, const alignment_params& aln_params) {
+  logger.debug() << "Using" << std::endl
+                 << "k: " << index_parameters.k << std::endl
+                 << "s: " << index_parameters.s << std::endl
+                 << "w_min: " << index_parameters.w_min << std::endl
+                 << "w_max: " << index_parameters.w_max << std::endl
+                 << "Read length (r): " << map_param.r << std::endl
+                 << "Maximum seed length: " << index_parameters.max_dist + index_parameters.k << std::endl
+                 << "R: " << map_param.R << std::endl
+                 << "Expected [w_min, w_max] in #syncmers: [" << index_parameters.w_min << ", " << index_parameters.w_max << "]" << std::endl
+                 << "Expected [w_min, w_max] in #nucleotides: [" << (index_parameters.k - index_parameters.s + 1) * index_parameters.w_min << ", " << (index_parameters.k - index_parameters.s + 1) * index_parameters.w_max << "]" << std::endl
+                 << "A: " << aln_params.match << std::endl
+                 << "B: " << aln_params.mismatch << std::endl
+                 << "O: " << aln_params.gap_open << std::endl
+                 << "E: " << aln_params.gap_extend << std::endl
+                 << "end bonus: " << aln_params.end_bonus << '\n';
+}
+
+
+int main(int argc, char **argv) {
 
   bool debug = true;
 
