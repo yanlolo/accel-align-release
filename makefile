@@ -1,9 +1,9 @@
 CC=g++
 
 ifneq ($(DEBUG),)
-	CFLAGS=-g -Wall -pthread -O0 -DDBGPRINT -isystem./WFA-paper -L$./WFA-paper/build -std=c++14
+	CFLAGS=-g -Wall -pthread -O0 -DDBGPRINT -isystem./WFA-paper -L$./WFA-paper/build -std=c++17
 else
-	CFLAGS=-g -Wall -pthread -O3 -isystem./WFA-paper -mavx2 -L./WFA-paper/build -std=c++14
+	CFLAGS=-g -Wall -pthread -O3 -isystem./WFA-paper -mavx2 -L./WFA-paper/build -std=c++17
 endif
 
 ACCLDFLAGS=./WFA-paper/build/libwfa.a -lz -ltbb
