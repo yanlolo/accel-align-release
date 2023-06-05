@@ -4,7 +4,7 @@
 #include <bitset>
 #include <algorithm>
 #include <cassert>
-#include <xxhash.h>
+#include "ext/xxhash.h"
 
 #include "randstrobes.hpp"
 
