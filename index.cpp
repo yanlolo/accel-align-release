@@ -211,65 +211,6 @@ int main(int ac, char **av) {
     return 0;
   }
 
-  unsigned kmer_temp = 0, mm_k_tmp = 0, mm_w_tmp = 0;
+  cerr << "Reached empty index main method";
 
-  for (int it = 1; it < ac; it++) {
-    if (strcmp(av[it], "-l") == 0)
-      kmer_temp = atoi(av[it + 1]);
-    else if (strcmp(av[it], "-m") == 0)
-      enable_idx_minimizer = true;
-    else if (strcmp(av[it], "-k") == 0)
-      mm_k_tmp = atoi(av[it + 1]);
-    else if (strcmp(av[it], "-w") == 0)
-      mm_w_tmp = atoi(av[it + 1]);
-    else if (strcmp(av[it], "-s") == 0)
-      enable_bs = true;
-  }
-  string fn = av[ac - 1]; //input ref file name
-
-  if (enable_idx_minimizer) {
-    int n_threads = 3;
-    mm_idxopt_t ipt;
-    mm_idxopt_init(&ipt);
-    if (mm_k_tmp)
-      ipt.k = mm_k_tmp;
-    if (mm_w_tmp)
-      ipt.w = mm_w_tmp;
-
-    fn += ".hash"; // output hash: xxx.hash
-
-    mm_idx_reader_t *idx_rdr = mm_idx_reader_open(av[ac - 1], &ipt, fn.c_str());
-    mm_idx_reader_read(idx_rdr, n_threads);
-  } else if (enable_bs) {
-    kmer = kmer_temp ? kmer_temp: 32;
-    cerr << "Using kmer length " << kmer << " and step size " << step << endl;
-
-    cerr << "==== convert reference C to T ===="  << endl;
-    Index ic;
-    if (!ic.load_ref(fn.c_str(), 'c'))
-      return 0;
-    if (!ic.make_index(fn.c_str(), 1))
-      return 0;
-
-    cerr << "==== convert reference G to A ===="  << endl;
-    Index ig;
-    if (!ig.load_ref(fn.c_str(), 'g'))
-      return 0;
-    if (!ig.make_index(fn.c_str(), 2))
-      return 0;
-
-    cerr << "hash1 and hash2 have been generated"  << endl;
-  } else {
-    kmer = kmer_temp ? kmer_temp: 32;
-
-    cerr << "Using kmer length " << kmer << " and step size " << step << endl;
-
-    Index i;
-    if (!i.load_ref(fn.c_str(), ' '))
-      return 0;
-    if (!i.make_index(fn.c_str(), 0))
-      return 0;
-  }
-
-  return 0;
 }
