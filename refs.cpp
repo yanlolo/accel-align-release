@@ -3,7 +3,7 @@
 #include <sstream>
 #include <algorithm>
 #include "refs.hpp"
-#include "zstr.hpp"
+#include "ext/zstr/zstr.hpp"
 
 
 /* Convert string to uppercase in-place */
