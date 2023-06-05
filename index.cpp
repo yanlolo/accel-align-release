@@ -430,57 +430,58 @@ void log_parameters(const IndexParameters& index_parameters, const mapping_param
 
 int main(int argc, char **argv) {
 
+
+  auto opt = parse_command_line_arguments(argc, argv);
+
+  logger.set_level(opt.verbose ? LOG_DEBUG : LOG_INFO);
+  logger.info() << std::setprecision(2) << std::fixed;
+  logger.info() << "This is accel-align using strobealign indexing " << '\n';
+
+  if (opt.c >= 64 || opt.c <= 0) {
+    throw BadParameter("c must be greater than 0 and less than 64");
+  }
+
+  InputBuffer input_buffer = get_input_buffer(opt);
+  if (!opt.r_set && !opt.reads_filename1.empty()) {
+    opt.r = estimate_read_length(input_buffer);
+    logger.info() << "Estimated read length: " << opt.r << " bp\n";
+  }
+  input_buffer.rewind_reset();
+  IndexParameters index_parameters = IndexParameters::from_read_length(
+          opt.r,
+          opt.k_set ? opt.k : IndexParameters::DEFAULT,
+          opt.s_set ? opt.s : IndexParameters::DEFAULT,
+          opt.l_set ? opt.l : IndexParameters::DEFAULT,
+          opt.u_set ? opt.u : IndexParameters::DEFAULT,
+          opt.c_set ? opt.c : IndexParameters::DEFAULT,
+          opt.max_seed_len_set ? opt.max_seed_len : IndexParameters::DEFAULT
+  );
+  logger.debug() << index_parameters << '\n';
+  alignment_params aln_params;
+  aln_params.match = opt.A;
+  aln_params.mismatch = opt.B;
+  aln_params.gap_open = opt.O;
+  aln_params.gap_extend = opt.E;
+  aln_params.end_bonus = opt.end_bonus;
+
+  mapping_params map_param;
+  map_param.r = opt.r;
+  map_param.max_secondary = opt.max_secondary;
+  map_param.dropoff_threshold = opt.dropoff_threshold;
+  map_param.R = opt.R;
+  map_param.maxTries = opt.maxTries;
+  map_param.is_sam_out = opt.is_sam_out;
+  map_param.cigar_eqx = opt.cigar_eqx;
+  map_param.output_unmapped = opt.output_unmapped;
+
+  log_parameters(index_parameters, map_param, aln_params);
+  logger.debug() << "Threads: " << opt.n_threads << std::endl;
+
   bool debug = true;
-
-  if(!debug) {
-    auto opt = parse_command_line_arguments(argc, argv);
-
-    logger.set_level(opt.verbose ? LOG_DEBUG : LOG_INFO);
-    logger.info() << std::setprecision(2) << std::fixed;
-    logger.info() << "This is accel-align using strobealign indexing " << '\n';
-
-    if (opt.c >= 64 || opt.c <= 0) {
-      throw BadParameter("c must be greater than 0 and less than 64");
-    }
-
-    InputBuffer input_buffer = get_input_buffer(opt);
-    if (!opt.r_set && !opt.reads_filename1.empty()) {
-      opt.r = estimate_read_length(input_buffer);
-      logger.info() << "Estimated read length: " << opt.r << " bp\n";
-    }
-    input_buffer.rewind_reset();
-    IndexParameters index_parameters = IndexParameters::from_read_length(
-            opt.r,
-            opt.k_set ? opt.k : IndexParameters::DEFAULT,
-            opt.s_set ? opt.s : IndexParameters::DEFAULT,
-            opt.l_set ? opt.l : IndexParameters::DEFAULT,
-            opt.u_set ? opt.u : IndexParameters::DEFAULT,
-            opt.c_set ? opt.c : IndexParameters::DEFAULT,
-            opt.max_seed_len_set ? opt.max_seed_len : IndexParameters::DEFAULT
-    );
-    logger.debug() << index_parameters << '\n';
-    alignment_params aln_params;
-    aln_params.match = opt.A;
-    aln_params.mismatch = opt.B;
-    aln_params.gap_open = opt.O;
-    aln_params.gap_extend = opt.E;
-    aln_params.end_bonus = opt.end_bonus;
-
-    mapping_params map_param;
-    map_param.r = opt.r;
-    map_param.max_secondary = opt.max_secondary;
-    map_param.dropoff_threshold = opt.dropoff_threshold;
-    map_param.R = opt.R;
-    map_param.maxTries = opt.maxTries;
-    map_param.is_sam_out = opt.is_sam_out;
-    map_param.cigar_eqx = opt.cigar_eqx;
-    map_param.output_unmapped = opt.output_unmapped;
-
-    log_parameters(index_parameters, map_param, aln_params);
-    logger.debug() << "Threads: " << opt.n_threads << std::endl;
 
 //    assert(k <= (w/2)*w_min && "k should be smaller than (w/2)*w_min to avoid creating short strobemers");
 
+  if (!debug) {
     // Create index
     References references;
     Timer read_refs_timer;
@@ -546,7 +547,6 @@ int main(int argc, char **argv) {
       }
     }
   }
-
 
 
 
