@@ -1,14 +1,13 @@
 #include "cmdline.hpp"
 
-#include <args.hxx>
+#include "ext/args.hxx"
 #include "arguments.hpp"
-#include "version.hpp"
 
 class Version {};
 
 CommandLineOptions parse_command_line_arguments(int argc, char **argv) {
 
-    args::ArgumentParser parser("strobelign " + version_string());
+    args::ArgumentParser parser("accel-align with strobealign v0.1");
     parser.helpParams.showTerminator = false;
     parser.helpParams.helpindent = 20;
     parser.helpParams.width = 90;

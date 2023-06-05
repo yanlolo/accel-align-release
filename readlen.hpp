@@ -1,7 +1,7 @@
 #ifndef STROBEALIGN_READLEN_HPP
 #define STROBEALIGN_READLEN_HPP
 
-#include "kseq++.hpp"
+#include "ext/kseq++.hpp"
 #include <zlib.h>
 #include "pc.hpp"
 
