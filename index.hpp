@@ -12,7 +12,7 @@
 #include <cmath>
 #include <iostream>
 #include <cassert>
-#include "robin_hood.h"
+#include "ext/robin_hood.h"
 #include "exceptions.hpp"
 #include "refs.hpp"
 #include "randstrobes.hpp"

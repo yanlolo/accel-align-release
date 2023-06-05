@@ -4,7 +4,7 @@
 #include <fstream>
 #include <cassert>
 #include <algorithm>
-#include "pdqsort/pdqsort.h"
+#include "ext/pdqsort/pdqsort.h"
 #include <iostream>
 #include <thread>
 #include <atomic>
