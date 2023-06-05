@@ -1,4 +1,5 @@
 #include "header.h"
+#include "index.hpp"
 
 using namespace std;
 const unsigned mod = (1UL << 29) - 1;
@@ -211,6 +212,6 @@ int main(int ac, char **av) {
     return 0;
   }
 
-  cerr << "Reached empty index main method";
+  cerr << "Reached empty index main method \n";
 
 }
