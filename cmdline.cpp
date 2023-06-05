@@ -69,7 +69,7 @@ CommandLineOptions parse_command_line_arguments(int argc, char **argv) {
         exit(EXIT_SUCCESS);
     }
     catch (const Version& e) {
-        std::cout << version_string() << std::endl;
+        std::cout << "Version 0.1" << std::endl;
         exit(EXIT_SUCCESS);
     }
     catch (const args::Error& e) {
