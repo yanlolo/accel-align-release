@@ -389,17 +389,7 @@ void StrobemerIndex::print_diagnostics(const std::string& logfile_name, int k) c
 }
 
 int main(int ac, char **av) {
-  if (ac < 2) {
-    cerr << "index [options] <ref.fa>\n";
-    cerr << "options:\n";
-    cerr << "\t-l INT length of seed [32]\n";
-    cerr << "\t-m enable minimizer\n";
-    cerr << "\t-k minimizer: k, kmer size \n";
-    cerr << "\t-w minimizer: w, window size \n";
-    cerr << "\t-s bisulfite sequencing read alignment mode \n";
-    return 0;
-  }
 
-  cerr << "Reached empty index main method \n";
+  std::cerr << "Reached empty index main method \n";
 
 }
