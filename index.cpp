@@ -481,72 +481,72 @@ int main(int argc, char **argv) {
 
 //    assert(k <= (w/2)*w_min && "k should be smaller than (w/2)*w_min to avoid creating short strobemers");
 
-  if (!debug) {
-    // Create index
-    References references;
-    Timer read_refs_timer;
-    references = References::from_fasta(opt.ref_filename);
-    logger.info() << "Time reading reference: " << read_refs_timer.elapsed() << " s\n";
 
-    logger.info() << "Reference size: " << references.total_length() / 1E6 << " Mbp ("
-                  << references.size() << " contig" << (references.size() == 1 ? "" : "s")
-                  << "; largest: "
-                  << (*std::max_element(references.lengths.begin(), references.lengths.end()) / 1E6) << " Mbp)\n";
-    if (references.total_length() == 0) {
-      throw InvalidFasta("No reference sequences found");
+  // Create index
+  References references;
+  Timer read_refs_timer;
+  references = References::from_fasta(opt.ref_filename);
+  logger.info() << "Time reading reference: " << read_refs_timer.elapsed() << " s\n";
+
+  logger.info() << "Reference size: " << references.total_length() / 1E6 << " Mbp ("
+                << references.size() << " contig" << (references.size() == 1 ? "" : "s")
+                << "; largest: "
+                << (*std::max_element(references.lengths.begin(), references.lengths.end()) / 1E6) << " Mbp)\n";
+  if (references.total_length() == 0) {
+    throw InvalidFasta("No reference sequences found");
+  }
+
+  StrobemerIndex index(references, index_parameters);
+  if (opt.use_index) {
+    // Read the index from a file
+    assert(!opt.only_gen_index);
+    Timer read_index_timer;
+    std::string sti_path = opt.ref_filename + index_parameters.filename_extension();
+    logger.info() << "Reading index from " << sti_path << '\n';
+    index.read(sti_path);
+    logger.info() << "Total time reading index: " << read_index_timer.elapsed() << " s\n";
+  } else {
+    logger.info() << "Indexing ...\n";
+    Timer index_timer;
+    index.populate(opt.f, opt.n_threads);
+
+    logger.info() << "  Time generating seeds: " << index.stats.elapsed_generating_seeds.count() << " s" <<  std::endl;
+    logger.info() << "  Time estimating number of unique hashes: " << index.stats.elapsed_unique_hashes.count() << " s" <<  std::endl;
+    logger.info() << "  Time sorting non-unique seeds: " << index.stats.elapsed_sorting_seeds.count() << " s" <<  std::endl;
+    logger.info() << "  Time generating hash table index: " << index.stats.elapsed_hash_index.count() << " s" <<  std::endl;
+    logger.info() << "Total time indexing: " << index_timer.elapsed() << " s\n";
+
+    logger.debug()
+            << "Unique strobemers: " << index.stats.unique_mers << std::endl
+            << "Total strobemers count: " << index.stats.tot_strobemer_count << std::endl
+            << "Total strobemers occur once: " << index.stats.tot_occur_once << std::endl
+            << "Fraction Unique: " << index.stats.frac_unique << std::endl
+            << "Total strobemers highly abundant > 100: " << index.stats.tot_high_ab << std::endl
+            << "Total strobemers mid abundance (between 2-100): " << index.stats.tot_mid_ab << std::endl
+            << "Total distinct strobemers stored: " << index.stats.tot_distinct_strobemer_count << std::endl;
+    if (index.stats.tot_high_ab >= 1) {
+      logger.debug() << "Ratio distinct to highly abundant: " << index.stats.tot_distinct_strobemer_count / index.stats.tot_high_ab << std::endl;
     }
+    if (index.stats.tot_mid_ab >= 1) {
+      logger.debug() << "Ratio distinct to non distinct: " << index.stats.tot_distinct_strobemer_count / (index.stats.tot_high_ab + index.stats.tot_mid_ab) << std::endl;
+    }
+    logger.debug() << "Filtered cutoff index: " << index.stats.index_cutoff << std::endl;
+    logger.debug() << "Filtered cutoff count: " << index.stats.filter_cutoff << std::endl;
 
-    StrobemerIndex index(references, index_parameters);
-    if (opt.use_index) {
-      // Read the index from a file
-      assert(!opt.only_gen_index);
-      Timer read_index_timer;
+    if (!opt.logfile_name.empty()) {
+      index.print_diagnostics(opt.logfile_name, index_parameters.k);
+      logger.debug() << "Finished printing log stats" << std::endl;
+    }
+    if (opt.only_gen_index) {
+      Timer index_writing_timer;
       std::string sti_path = opt.ref_filename + index_parameters.filename_extension();
-      logger.info() << "Reading index from " << sti_path << '\n';
-      index.read(sti_path);
-      logger.info() << "Total time reading index: " << read_index_timer.elapsed() << " s\n";
-    } else {
-      logger.info() << "Indexing ...\n";
-      Timer index_timer;
-      index.populate(opt.f, opt.n_threads);
-
-      logger.info() << "  Time generating seeds: " << index.stats.elapsed_generating_seeds.count() << " s" <<  std::endl;
-      logger.info() << "  Time estimating number of unique hashes: " << index.stats.elapsed_unique_hashes.count() << " s" <<  std::endl;
-      logger.info() << "  Time sorting non-unique seeds: " << index.stats.elapsed_sorting_seeds.count() << " s" <<  std::endl;
-      logger.info() << "  Time generating hash table index: " << index.stats.elapsed_hash_index.count() << " s" <<  std::endl;
-      logger.info() << "Total time indexing: " << index_timer.elapsed() << " s\n";
-
-      logger.debug()
-              << "Unique strobemers: " << index.stats.unique_mers << std::endl
-              << "Total strobemers count: " << index.stats.tot_strobemer_count << std::endl
-              << "Total strobemers occur once: " << index.stats.tot_occur_once << std::endl
-              << "Fraction Unique: " << index.stats.frac_unique << std::endl
-              << "Total strobemers highly abundant > 100: " << index.stats.tot_high_ab << std::endl
-              << "Total strobemers mid abundance (between 2-100): " << index.stats.tot_mid_ab << std::endl
-              << "Total distinct strobemers stored: " << index.stats.tot_distinct_strobemer_count << std::endl;
-      if (index.stats.tot_high_ab >= 1) {
-        logger.debug() << "Ratio distinct to highly abundant: " << index.stats.tot_distinct_strobemer_count / index.stats.tot_high_ab << std::endl;
-      }
-      if (index.stats.tot_mid_ab >= 1) {
-        logger.debug() << "Ratio distinct to non distinct: " << index.stats.tot_distinct_strobemer_count / (index.stats.tot_high_ab + index.stats.tot_mid_ab) << std::endl;
-      }
-      logger.debug() << "Filtered cutoff index: " << index.stats.index_cutoff << std::endl;
-      logger.debug() << "Filtered cutoff count: " << index.stats.filter_cutoff << std::endl;
-
-      if (!opt.logfile_name.empty()) {
-        index.print_diagnostics(opt.logfile_name, index_parameters.k);
-        logger.debug() << "Finished printing log stats" << std::endl;
-      }
-      if (opt.only_gen_index) {
-        Timer index_writing_timer;
-        std::string sti_path = opt.ref_filename + index_parameters.filename_extension();
-        logger.info() << "Writing index to " << sti_path << '\n';
-        index.write(opt.ref_filename + index_parameters.filename_extension());
-        logger.info() << "Total time writing index: " << index_writing_timer.elapsed() << " s\n";
-        return EXIT_SUCCESS;
-      }
+      logger.info() << "Writing index to " << sti_path << '\n';
+      index.write(opt.ref_filename + index_parameters.filename_extension());
+      logger.info() << "Total time writing index: " << index_writing_timer.elapsed() << " s\n";
+      return EXIT_SUCCESS;
     }
   }
+
 
 
 
