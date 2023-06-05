@@ -12,6 +12,7 @@
 #include <cmath>
 #include <iostream>
 #include <cassert>
+#include <iomanip>
 #include "ext/robin_hood.h"
 #include "exceptions.hpp"
 #include "refs.hpp"

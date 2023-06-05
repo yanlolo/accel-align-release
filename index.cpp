@@ -396,6 +396,19 @@ void StrobemerIndex::print_diagnostics(const std::string& logfile_name, int k) c
 }
 
 
+InputBuffer get_input_buffer(const CommandLineOptions& opt) {
+  if (opt.is_SE) {
+    return InputBuffer(opt.reads_filename1, "", opt.chunk_size, false);
+  } else if (opt.is_interleaved) {
+    if (opt.reads_filename2 != "") {
+      throw BadParameter("Cannot specify both --interleaved and specify two read files");
+    }
+    return InputBuffer(opt.reads_filename1, "", opt.chunk_size, true);
+  } else {
+    return InputBuffer(opt.reads_filename1, opt.reads_filename2, opt.chunk_size, false);
+  }
+}
+
 void log_parameters(const IndexParameters& index_parameters, const mapping_params& map_param, const alignment_params& aln_params) {
   logger.debug() << "Using" << std::endl
                  << "k: " << index_parameters.k << std::endl
