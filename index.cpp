@@ -448,6 +448,43 @@ std::string sam_header(const References& references, const std::string& read_gro
 }
 
 
+void show_progress_until_done(std::vector<int>& worker_done, std::vector<AlignmentStatistics>& stats) {
+  Timer timer;
+  bool reported = false;
+  bool done = false;
+  // Waiting time between progress updates
+  // Start with a small value so that there’s no delay if there are very few
+  // reads to align.
+  auto time_to_wait = std::chrono::milliseconds(1);
+  while (!done) {
+    std::this_thread::sleep_for(time_to_wait);
+    // Ramp up waiting time
+    time_to_wait = std::min(time_to_wait * 2, std::chrono::milliseconds(1000));
+    done = true;
+    for (auto is_done : worker_done) {
+      if (!is_done) {
+        done = false;
+        continue;
+      }
+    }
+    auto n_reads = 0ull;
+    for (auto& stat : stats) {
+      n_reads += stat.n_reads;
+    }
+    auto elapsed = timer.elapsed();
+    if (elapsed >= 1.0) {
+      std::cerr
+              << " Mapped "
+              << std::setw(12) << (n_reads / 1E6) << " M reads @ "
+              << std::setw(8) << (timer.elapsed() * 1E6 / n_reads) << " us/read                   \r";
+      reported = true;
+    }
+  }
+  if (reported) {
+    std::cerr << '\n';
+  }
+}
+
 int main(int argc, char **argv) {
 
 
