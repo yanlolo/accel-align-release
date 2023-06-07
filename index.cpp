@@ -443,7 +443,7 @@ std::string sam_header(const References& references, const std::string& read_gro
     }
     out << '\n';
   }
-  out << "@PG\tID:strobealign\tPN:strobealign\tVN:" << version_string() << "\tCL:" << cmd_line << std::endl;
+  out << "@PG\tID:strobealign\tPN:strobealign\tVN: 0.1"  << "\tCL:" << cmd_line << std::endl;
   return out.str();
 }
 
