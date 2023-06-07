@@ -547,7 +547,75 @@ int main(int argc, char **argv) {
     }
   }
 
+  Timer map_align_timer;
+  map_param.rescue_cutoff = map_param.R < 100 ? map_param.R * index.filter_cutoff : 1000;
+  logger.debug() << "Using rescue cutoff: " << map_param.rescue_cutoff << std::endl;
 
+  std::streambuf* buf;
+  std::ofstream of;
+
+  if (!opt.write_to_stdout) {
+    of.open(opt.output_file_name);
+    buf = of.rdbuf();
+  }
+  else {
+    buf = std::cout.rdbuf();
+  }
+
+  std::ostream out(buf);
+
+  if (map_param.is_sam_out) {
+    std::stringstream cmd_line;
+    for(int i = 0; i < argc; ++i) {
+      cmd_line << argv[i] << " ";
+    }
+
+    out << sam_header(references, opt.read_group_id, opt.read_group_fields, cmd_line.str());
+  }
+
+  std::vector<AlignmentStatistics> log_stats_vec(opt.n_threads);
+
+  logger.info() << "Running in " << (opt.is_SE ? "single-end" : "paired-end") << " mode" << std::endl;
+
+  OutputBuffer output_buffer(out);
+
+  std::vector<std::thread> workers;
+  std::vector<int> worker_done(opt.n_threads);  // each thread sets its entry to 1 when it’s done
+  for (int i = 0; i < opt.n_threads; ++i) {
+    std::thread consumer(perform_task, std::ref(input_buffer), std::ref(output_buffer),
+                         std::ref(log_stats_vec[i]), std::ref(worker_done[i]), std::ref(aln_params),
+                         std::ref(map_param), std::ref(index_parameters), std::ref(references),
+                         std::ref(index), std::ref(opt.read_group_id));
+    workers.push_back(std::move(consumer));
+  }
+  if (opt.show_progress && isatty(2)) {
+    show_progress_until_done(worker_done, log_stats_vec);
+  }
+  for (auto& worker : workers) {
+    worker.join();
+  }
+  logger.info() << "Done!\n";
+
+  AlignmentStatistics tot_statistics;
+  for (auto& it : log_stats_vec) {
+    tot_statistics += it;
+  }
+
+  logger.info() << "Total mapping sites tried: " << tot_statistics.tot_all_tried << std::endl
+                << "Total calls to ssw: " << tot_statistics.tot_aligner_calls << std::endl
+                << "Calls to ksw (rescue mode): " << tot_statistics.tot_rescued << std::endl
+                << "Did not fit strobe start site: " << tot_statistics.did_not_fit << std::endl
+                << "Tried rescue: " << tot_statistics.tried_rescue << std::endl
+                << "Total time mapping: " << map_align_timer.elapsed() << " s." << std::endl
+                << "Total time reading read-file(s): " << tot_statistics.tot_read_file.count() / opt.n_threads << " s." << std::endl
+                << "Total time creating strobemers: " << tot_statistics.tot_construct_strobemers.count() / opt.n_threads << " s." << std::endl
+                << "Total time finding NAMs (non-rescue mode): " << tot_statistics.tot_find_nams.count() / opt.n_threads << " s." << std::endl
+                << "Total time finding NAMs (rescue mode): " << tot_statistics.tot_time_rescue.count() / opt.n_threads << " s." << std::endl;
+  //<< "Total time finding NAMs ALTERNATIVE (candidate sites): " << tot_find_nams_alt.count()/opt.n_threads  << " s." <<  std::endl;
+  logger.info() << "Total time sorting NAMs (candidate sites): " << tot_statistics.tot_sort_nams.count() / opt.n_threads << " s." << std::endl
+                << "Total time base level alignment (ssw): " << tot_statistics.tot_extend.count() / opt.n_threads << " s." << std::endl
+                << "Total time writing alignment to files: " << tot_statistics.tot_write_file.count() << " s." << std::endl;
+  return EXIT_SUCCESS;
 
 
 }
