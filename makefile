@@ -9,7 +9,7 @@ endif
 ACCLDFLAGS=./WFA-paper/build/libwfa.a -lz -ltbb
 TARGETS=accindex accalign
 CPUSRC=reference.cpp accalign.cpp embedding.cpp ksw2_extz2_sse.c bseq.c index.c kthread.c kalloc.c sketch.c misc.c options.c seed.c
-IDXSRC=index.cpp embedding.cpp bseq.c index.c kthread.c kalloc.c sketch.c misc.c options.c indexparameters.cpp io.cpp randstrobes.cpp ./ext/xxhash.c pc.cpp sam.cpp cigar.cpp aln.cpp aligner.cpp fastq.cpp nam.cpp paf.cpp cmdline.cpp readlen.cpp refs.cpp ./ext/ssw/ssw.c ./ext/ssw/ssw_cpp.cpp
+IDXSRC=index.cpp embedding.cpp bseq.c index.c kthread.c kalloc.c sketch.c misc.c options.c strobealign/indexparameters.cpp strobealign/io.cpp strobealign/randstrobes.cpp ./strobealign/ext/xxhash.c strobealign/pc.cpp strobealign/sam.cpp strobealign/cigar.cpp strobealign/aln.cpp strobealign/aligner.cpp strobealign/fastq.cpp strobealign/nam.cpp strobealign/paf.cpp strobealign/cmdline.cpp strobealign/readlen.cpp strobealign/refs.cpp ./strobealign/ext/ssw/ssw.c ./strobealign/ext/ssw/ssw_cpp.cpp
 HEADERS=$(wildcard *.h)
 HEADERSHPP=$(wildcard *.hpp)
 

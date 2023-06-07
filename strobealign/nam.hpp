@@ -2,7 +2,7 @@
 #define STROBEALIGN_NAM_HPP
 
 #include <vector>
-#include "index.hpp"
+#include "../index.hpp"
 #include "randstrobes.hpp"
 
 // Non-overlapping approximate match

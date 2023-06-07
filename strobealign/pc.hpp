@@ -13,7 +13,7 @@
 #include <unordered_map>
 #include <optional>
 
-#include "index.hpp"
+#include "../index.hpp"
 #include "aln.hpp"
 #include "refs.hpp"
 #include "fastq.hpp"

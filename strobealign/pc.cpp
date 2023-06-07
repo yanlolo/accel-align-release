@@ -12,7 +12,7 @@
 
 #include "timer.hpp"
 #include "ext/robin_hood.h"
-#include "index.hpp"
+#include "../index.hpp"
 #include "ext/kseq++.hpp"
 #include "sam.hpp"
 

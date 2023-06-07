@@ -4,21 +4,21 @@
 #include <fstream>
 #include <cassert>
 #include <algorithm>
-#include "ext/pdqsort/pdqsort.h"
+#include "strobealign/ext/pdqsort/pdqsort.h"
 #include <iostream>
 #include <thread>
 #include <atomic>
-#include "ext/hyperloglog/hyperloglog.hpp"
-#include "io.hpp"
-#include "timer.hpp"
-#include "logger.hpp"
+#include "strobealign/ext/hyperloglog/hyperloglog.hpp"
+#include "strobealign/io.hpp"
+#include "strobealign/timer.hpp"
+#include "strobealign/logger.hpp"
 
-#include "refs.hpp"
-#include "exceptions.hpp"
-#include "cmdline.hpp"
-#include "pc.hpp"
-#include "aln.hpp"
-#include "readlen.hpp"
+#include "strobealign/refs.hpp"
+#include "strobealign/exceptions.hpp"
+#include "strobealign/cmdline.hpp"
+#include "strobealign/pc.hpp"
+#include "strobealign/aln.hpp"
+#include "strobealign/readlen.hpp"
 
 
 static Logger& logger = Logger::get();

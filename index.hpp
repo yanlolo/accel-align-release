@@ -13,11 +13,11 @@
 #include <iostream>
 #include <cassert>
 #include <iomanip>
-#include "ext/robin_hood.h"
-#include "exceptions.hpp"
-#include "refs.hpp"
-#include "randstrobes.hpp"
-#include "indexparameters.hpp"
+#include "strobealign/ext/robin_hood.h"
+#include "strobealign/exceptions.hpp"
+#include "strobealign/refs.hpp"
+#include "strobealign/randstrobes.hpp"
+#include "strobealign/indexparameters.hpp"
 
 /*
  * This describes where a randstrobe occurs. Info stored:
