@@ -427,6 +427,26 @@ void log_parameters(const IndexParameters& index_parameters, const mapping_param
                  << "end bonus: " << aln_params.end_bonus << '\n';
 }
 
+/*
+ * Return formatted SAM header as a string
+ */
+std::string sam_header(const References& references, const std::string& read_group_id, const std::vector<std::string>& read_group_fields, const std::string& cmd_line) {
+  std::stringstream out;
+  out << "@HD\tVN:1.6\tSO:unsorted\n";
+  for (size_t i = 0; i < references.size(); ++i) {
+    out << "@SQ\tSN:" << references.names[i] << "\tLN:" << references.lengths[i] << "\n";
+  }
+  if (!read_group_id.empty()) {
+    out << "@RG\tID:" << read_group_id;
+    for (const auto& field : read_group_fields) {
+      out << '\t' << field;
+    }
+    out << '\n';
+  }
+  out << "@PG\tID:strobealign\tPN:strobealign\tVN:" << version_string() << "\tCL:" << cmd_line << std::endl;
+  return out.str();
+}
+
 
 int main(int argc, char **argv) {
 
