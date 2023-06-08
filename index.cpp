@@ -638,7 +638,8 @@ int main(int argc, char **argv) {
 
   std::vector<std::thread> workers;
   std::vector<int> worker_done(opt.n_threads);  // each thread sets its entry to 1 when it’s done
-  for (int i = 0; i < opt.n_threads; ++i) {
+  for (int i = 0; i < 1; ++i) {
+  // for (int i = 0; i < opt.n_threads; ++i) {
     std::thread consumer(perform_task, std::ref(input_buffer), std::ref(output_buffer),
                          std::ref(log_stats_vec[i]), std::ref(worker_done[i]), std::ref(aln_params),
                          std::ref(map_param), std::ref(index_parameters), std::ref(references),
