@@ -18,6 +18,10 @@
 #include "strobealign/refs.hpp"
 #include "strobealign/randstrobes.hpp"
 #include "strobealign/indexparameters.hpp"
+#include "strobealign/pc.hpp"
+#include "strobealign/cmdline.hpp"
+#include "strobealign/aln.hpp"
+#include "strobealign/aligner.hpp"
 
 /*
  * This describes where a randstrobe occurs. Info stored:
