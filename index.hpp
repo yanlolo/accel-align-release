@@ -18,10 +18,6 @@
 #include "strobealign/refs.hpp"
 #include "strobealign/randstrobes.hpp"
 #include "strobealign/indexparameters.hpp"
-#include "strobealign/pc.hpp"
-#include "strobealign/cmdline.hpp"
-#include "strobealign/aln.hpp"
-#include "strobealign/aligner.hpp"
 
 /*
  * This describes where a randstrobe occurs. Info stored:
@@ -187,9 +183,5 @@ private:
     const References& references;
     RandstrobeMap randstrobe_map; // k-mer -> (offset in flat_vector, occurence count )
 };
-
-InputBuffer get_input_buffer(const CommandLineOptions& opt);
-void log_parameters(const IndexParameters& index_parameters, const mapping_params& map_param, const alignment_params& aln_params);
-std::string sam_header(const References& references, const std::string& read_group_id, const std::vector<std::string>& read_group_fields, const std::string& cmd_line);
 
 #endif
