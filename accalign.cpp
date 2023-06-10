@@ -1,6 +1,17 @@
 #include "header.h"
 #include "accalign.h"
 #include "ksw2.h"
+#include "strobealign/ext/hyperloglog/hyperloglog.hpp"
+#include "strobealign/io.hpp"
+#include "strobealign/timer.hpp"
+#include "strobealign/logger.hpp"
+
+#include "strobealign/refs.hpp"
+#include "strobealign/exceptions.hpp"
+#include "strobealign/cmdline.hpp"
+#include "strobealign/pc.hpp"
+#include "strobealign/aln.hpp"
+#include "strobealign/readlen.hpp"
 
 using namespace tbb::flow;
 using namespace std;
@@ -20,6 +31,10 @@ int g_ncpus = 1;
 float delTime = 0, mapqTime = 0, keyvTime = 0, posvTime = 0, sortTime = 0;
 float mm_cal = 0, mm_fetch = 0, mm_hit_cnt = 0;
 int8_t mat[25];
+
+
+// Strobealign specific
+static Logger& logger = Logger::get();
 
 void make_code(void) {
   for (size_t i = 0; i < 256; i++)
@@ -1121,16 +1136,17 @@ void AccAlign::pigeonhole_query(char *query,
                                 vector<Region> &candidate_regions,
                                 char strand,
                                 unsigned &best,
-                                unsigned ori_slide, // Meaning/Purpose ?
-                                int err_threshold, // Meaning/Purpose ?
-                                unsigned kmer_step,
-                                unsigned max_occ, // Meaning/Purpose ?
-                                bool &high_freq, // Meaning/Purpose ?
-                                int reference_id) {
+                                unsigned ori_slide, // Meaning/Purpose ? offset, usually 0, will be increased in case seeding doesnt work
+                                int error_threshold, // Meaning/Purpose ? how many seeds per read should be aligned minimum to be relevant
+                                unsigned kmer_step, // usually 32
+                                unsigned max_occ, // Meaning/Purpose ? usually value = 5000; how many candidate positions can found for a seed -> in case more than max_occ, it is high frequent seed
+                                bool &high_freq, // Meaning/Purpose ? is set to true, if a seed has more than max_occ positions
+                                int reference_id) { // relevant for bisulfte conversion; when there is a bisulfite conversion and value is 0, then C is transformed to T and
+                                                    // when there is a bisulfite conversion and value is 1, then G is transformed to A and
   int max_coverage = 0;
-  unsigned nkmers = (read_length - ori_slide - kmer_len) / kmer_step + 1;
-  size_t ntotal_hits = 0;
-  size_t b[nkmers], e[nkmers]; // Meaning/Purpose ?
+  unsigned nkmers = (read_length - ori_slide - kmer_len) / kmer_step + 1; // how many seeds we have
+  size_t ntotal_hits = 0; // number of candidate positions
+  size_t b[nkmers], e[nkmers]; // beginning positions, end positions of the seed
   unsigned kmer_idx = 0; // Meaning/Purpose ?
   unsigned nseed_freq = 0; // Meaning/Purpose ?
 
@@ -1139,9 +1155,9 @@ void AccAlign::pigeonhole_query(char *query,
   for (size_t i = ori_slide; i + kmer_len <= read_length; i += kmer_step) {
     uint64_t k = 0; // Meaning/Purpose ?
     for (size_t j = i; j < i + kmer_len; j++)
-      k = (k << 2) + *(query + j); // Meaning/Purpose ?
-    size_t hash = (k & mask) % MOD; // Meaning/Purpose ?
-    b[kmer_idx] = get_keyv(reference_id)[hash]; // Meaning/Purpose ?
+      k = (k << 2) + *(query + j); // every character should be represented with 2 bits, therefore the shift with 2
+    size_t hash = (k & mask) % MOD; //
+    b[kmer_idx] = get_keyv(reference_id)[hash]; // get the key position
     e[kmer_idx] = get_keyv(reference_id)[hash + 1]; // Meaning/Purpose ?
     if (e[kmer_idx] - b[kmer_idx] >= max_occ) // Meaning/Purpose ?
       nseed_freq++;
@@ -1207,7 +1223,7 @@ void AccAlign::pigeonhole_query(char *query,
         region.matched_intervals.push_back(Interval{last_qs, last_qs + kmer_len});
         last_coverage++;
       } else {
-        if (last_coverage >= err_threshold) {
+        if (last_coverage >= error_threshold) {
           region.cov = last_coverage;
           region.rs = last_pos;
           region.matched_intervals.push_back(Interval{last_qs, last_qs + kmer_len});
@@ -1244,7 +1260,7 @@ void AccAlign::pigeonhole_query(char *query,
 
   // we will have the last few positions not processed. check here.
   if (last_pos != MAX_POS) {
-    if (last_coverage >= err_threshold) {
+    if (last_coverage >= error_threshold) {
       region.cov = last_coverage;
       region.rs = last_pos;
       region.matched_intervals.push_back(Interval{last_qs, last_qs + kmer_len});
@@ -1546,7 +1562,7 @@ void AccAlign::map_read(Read &R, int ref_id) {
   }
 
   if (extend_all) {
-    int max_as = INT_MIN;
+    int max_as = INT_MIN;x
     char strand = '+';
     Region r;
     for (Region &region: fcandidate_regions) {
@@ -2977,7 +2993,42 @@ bool AccAlign::tbb_fastq(const char *F1, const char *F2) {
   return true;
 }
 
+
+InputBuffer get_input_buffer(const CommandLineOptions& opt) {
+  if (opt.is_SE) {
+    return InputBuffer(opt.reads_filename1, "", opt.chunk_size, false);
+  } else if (opt.is_interleaved) {
+    if (opt.reads_filename2 != "") {
+      throw BadParameter("Cannot specify both --interleaved and specify two read files");
+    }
+    return InputBuffer(opt.reads_filename1, "", opt.chunk_size, true);
+  } else {
+    return InputBuffer(opt.reads_filename1, opt.reads_filename2, opt.chunk_size, false);
+  }
+}
+
+void log_parameters(const IndexParameters& index_parameters, const mapping_params& map_param, const alignment_params& aln_params) {
+  logger.debug() << "Using" << std::endl
+                 << "k: " << index_parameters.k << std::endl
+                 << "s: " << index_parameters.s << std::endl
+                 << "w_min: " << index_parameters.w_min << std::endl
+                 << "w_max: " << index_parameters.w_max << std::endl
+                 << "Read length (r): " << map_param.r << std::endl
+                 << "Maximum seed length: " << index_parameters.max_dist + index_parameters.k << std::endl
+                 << "R: " << map_param.R << std::endl
+                 << "Expected [w_min, w_max] in #syncmers: [" << index_parameters.w_min << ", " << index_parameters.w_max << "]" << std::endl
+                 << "Expected [w_min, w_max] in #nucleotides: [" << (index_parameters.k - index_parameters.s + 1) * index_parameters.w_min << ", " << (index_parameters.k - index_parameters.s + 1) * index_parameters.w_max << "]" << std::endl
+                 << "A: " << aln_params.match << std::endl
+                 << "B: " << aln_params.mismatch << std::endl
+                 << "O: " << aln_params.gap_open << std::endl
+                 << "E: " << aln_params.gap_extend << std::endl
+                 << "end bonus: " << aln_params.end_bonus << '\n';
+}
+
 int main(int ac, char **av) {
+
+
+  // Accel-Align Setup
   if (ac < 3) {
     print_usage();
     return 0;
@@ -3067,6 +3118,124 @@ int main(int ac, char **av) {
 
   AccAlign f(r);
   f.open_output(g_out);
+
+
+  logger.info() << "Finished Accel-Align Setup" << std::endl;
+
+  // Strobealign Setup
+
+  auto opt = parse_command_line_arguments(ac, av);
+
+  logger.set_level(opt.verbose ? LOG_DEBUG : LOG_INFO);
+  logger.info() << std::setprecision(2) << std::fixed;
+
+  if (opt.c >= 64 || opt.c <= 0) {
+    throw BadParameter("c must be greater than 0 and less than 64");
+  }
+
+  InputBuffer input_buffer = get_input_buffer(opt);
+  if (!opt.r_set && !opt.reads_filename1.empty()) {
+    opt.r = estimate_read_length(input_buffer);
+    logger.info() << "Estimated read length: " << opt.r << " bp\n";
+  }
+  input_buffer.rewind_reset();
+  IndexParameters index_parameters = IndexParameters::from_read_length(
+          opt.r,
+          opt.k_set ? opt.k : IndexParameters::DEFAULT,
+          opt.s_set ? opt.s : IndexParameters::DEFAULT,
+          opt.l_set ? opt.l : IndexParameters::DEFAULT,
+          opt.u_set ? opt.u : IndexParameters::DEFAULT,
+          opt.c_set ? opt.c : IndexParameters::DEFAULT,
+          opt.max_seed_len_set ? opt.max_seed_len : IndexParameters::DEFAULT
+  );
+  logger.debug() << index_parameters << '\n';
+  alignment_params aln_params;
+  aln_params.match = opt.A;
+  aln_params.mismatch = opt.B;
+  aln_params.gap_open = opt.O;
+  aln_params.gap_extend = opt.E;
+  aln_params.end_bonus = opt.end_bonus;
+
+  mapping_params map_param;
+  map_param.r = opt.r;
+  map_param.max_secondary = opt.max_secondary;
+  map_param.dropoff_threshold = opt.dropoff_threshold;
+  map_param.R = opt.R;
+  map_param.maxTries = opt.maxTries;
+  map_param.is_sam_out = opt.is_sam_out;
+  map_param.cigar_eqx = opt.cigar_eqx;
+  map_param.output_unmapped = opt.output_unmapped;
+
+  log_parameters(index_parameters, map_param, aln_params);
+  logger.debug() << "Threads: " << opt.n_threads << std::endl;
+
+
+  // Create index
+  References references;
+  Timer read_refs_timer;
+  references = References::from_fasta(opt.ref_filename);
+  logger.info() << "Time reading reference: " << read_refs_timer.elapsed() << " s\n";
+
+  logger.info() << "Reference size: " << references.total_length() / 1E6 << " Mbp ("
+                << references.size() << " contig" << (references.size() == 1 ? "" : "s")
+                << "; largest: "
+                << (*std::max_element(references.lengths.begin(), references.lengths.end()) / 1E6) << " Mbp)\n";
+  if (references.total_length() == 0) {
+    throw InvalidFasta("No reference sequences found");
+  }
+
+  StrobemerIndex index(references, index_parameters);
+
+  // Read the index from a file
+  assert(!opt.only_gen_index);
+  Timer read_index_timer;
+  std::string sti_path = opt.ref_filename + index_parameters.filename_extension();
+  logger.info() << "Reading index from " << sti_path << '\n';
+  index.read(sti_path);
+  logger.info() << "Total time reading index: " << read_index_timer.elapsed() << " s\n";
+
+
+  // Map/align reads
+
+  Timer map_align_timer;
+  map_param.rescue_cutoff = map_param.R < 100 ? map_param.R * index.filter_cutoff : 1000;
+  logger.debug() << "Using rescue cutoff: " << map_param.rescue_cutoff << std::endl;
+
+  std::streambuf* buf;
+  std::ofstream of;
+
+  if (!opt.write_to_stdout) {
+    of.open(opt.output_file_name);
+    buf = of.rdbuf();
+  }
+  else {
+    buf = std::cout.rdbuf();
+  }
+
+  std::ostream out(buf);
+
+  if (map_param.is_sam_out) {
+    std::stringstream cmd_line;
+    for(int i = 0; i < ac; ++i) {
+      cmd_line << av[i] << " ";
+    }
+
+    out << sam_header(references, opt.read_group_id, opt.read_group_fields, cmd_line.str());
+  }
+
+  std::vector<AlignmentStatistics> log_stats_vec(opt.n_threads);
+
+  logger.info() << "Running in " << (opt.is_SE ? "single-end" : "paired-end") << " mode" << std::endl;
+  logger.info() << "Finished Strobealign Setup" << std::endl;
+
+
+
+
+
+
+
+
+
 
   if (opn == ac - 1) {
     f.fastq(av[opn], "\0", false);
