@@ -12,6 +12,7 @@
 #include "strobealign/pc.hpp"
 #include "strobealign/aln.hpp"
 #include "strobealign/readlen.hpp"
+#include "index.hpp"
 
 using namespace tbb::flow;
 using namespace std;
@@ -2994,56 +2995,10 @@ bool AccAlign::tbb_fastq(const char *F1, const char *F2) {
 }
 
 
-InputBuffer get_input_buffer(const CommandLineOptions& opt) {
-  if (opt.is_SE) {
-    return InputBuffer(opt.reads_filename1, "", opt.chunk_size, false);
-  } else if (opt.is_interleaved) {
-    if (opt.reads_filename2 != "") {
-      throw BadParameter("Cannot specify both --interleaved and specify two read files");
-    }
-    return InputBuffer(opt.reads_filename1, "", opt.chunk_size, true);
-  } else {
-    return InputBuffer(opt.reads_filename1, opt.reads_filename2, opt.chunk_size, false);
-  }
-}
 
-void log_parameters(const IndexParameters& index_parameters, const mapping_params& map_param, const alignment_params& aln_params) {
-  logger.debug() << "Using" << std::endl
-                 << "k: " << index_parameters.k << std::endl
-                 << "s: " << index_parameters.s << std::endl
-                 << "w_min: " << index_parameters.w_min << std::endl
-                 << "w_max: " << index_parameters.w_max << std::endl
-                 << "Read length (r): " << map_param.r << std::endl
-                 << "Maximum seed length: " << index_parameters.max_dist + index_parameters.k << std::endl
-                 << "R: " << map_param.R << std::endl
-                 << "Expected [w_min, w_max] in #syncmers: [" << index_parameters.w_min << ", " << index_parameters.w_max << "]" << std::endl
-                 << "Expected [w_min, w_max] in #nucleotides: [" << (index_parameters.k - index_parameters.s + 1) * index_parameters.w_min << ", " << (index_parameters.k - index_parameters.s + 1) * index_parameters.w_max << "]" << std::endl
-                 << "A: " << aln_params.match << std::endl
-                 << "B: " << aln_params.mismatch << std::endl
-                 << "O: " << aln_params.gap_open << std::endl
-                 << "E: " << aln_params.gap_extend << std::endl
-                 << "end bonus: " << aln_params.end_bonus << '\n';
-}
 
-/*
- * Return formatted SAM header as a string
- */
-std::string sam_header(const References& references, const std::string& read_group_id, const std::vector<std::string>& read_group_fields, const std::string& cmd_line) {
-  std::stringstream out;
-  out << "@HD\tVN:1.6\tSO:unsorted\n";
-  for (size_t i = 0; i < references.size(); ++i) {
-    out << "@SQ\tSN:" << references.names[i] << "\tLN:" << references.lengths[i] << "\n";
-  }
-  if (!read_group_id.empty()) {
-    out << "@RG\tID:" << read_group_id;
-    for (const auto& field : read_group_fields) {
-      out << '\t' << field;
-    }
-    out << '\n';
-  }
-  out << "@PG\tID:strobealign\tPN:strobealign\tVN: 0.1"  << "\tCL:" << cmd_line << std::endl;
-  return out.str();
-}
+
+
 
 int main(int ac, char **av) {
 
