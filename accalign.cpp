@@ -12,7 +12,7 @@
 #include "strobealign/pc.hpp"
 #include "strobealign/aln.hpp"
 #include "strobealign/readlen.hpp"
-#include "index.hpp"
+#include "strobealign-integrator.hpp"
 
 using namespace tbb::flow;
 using namespace std;
