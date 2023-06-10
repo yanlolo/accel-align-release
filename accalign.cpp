@@ -1562,7 +1562,7 @@ void AccAlign::map_read(Read &R, int ref_id) {
   }
 
   if (extend_all) {
-    int max_as = INT_MIN;x
+    int max_as = INT_MIN;
     char strand = '+';
     Region r;
     for (Region &region: fcandidate_regions) {
