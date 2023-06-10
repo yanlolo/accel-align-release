@@ -4,20 +4,20 @@
 //
 //  Created by Kristoffer Sahlin on 4/21/21.
 //
-#include "index.hpp"
+#include "strobealign-integrator.hpp"
 
 #include <math.h>   /* pow */
 #include <fstream>
 #include <cassert>
 #include <algorithm>
-#include "pdqsort/pdqsort.h"
+#include "strobealign/ext/pdqsort/pdqsort.h"
 #include <iostream>
 #include <thread>
 #include <atomic>
-#include <hyperloglog/hyperloglog.hpp>
-#include "io.hpp"
-#include "timer.hpp"
-#include "logger.hpp"
+#include "strobealign/ext/hyperloglog/hyperloglog.hpp"
+#include "strobealign/io.hpp"
+#include "strobealign/timer.hpp"
+#include "strobealign/logger.hpp"
 
 static Logger& logger = Logger::get();
 

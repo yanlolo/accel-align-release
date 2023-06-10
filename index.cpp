@@ -44,11 +44,6 @@ std::string sam_header(const References& references, const std::string& read_gro
   return out.str();
 }
 
-void warn_if_no_optimizations() {
-  if (std::string(CMAKE_BUILD_TYPE) == "Debug") {
-    logger.info() << "\n    ***** Binary was compiled without optimizations - this will be very slow *****\n\n";
-  }
-}
 
 void log_parameters(const IndexParameters& index_parameters, const mapping_params& map_param, const alignment_params& aln_params) {
   logger.debug() << "Using" << std::endl
@@ -132,7 +127,7 @@ int run_strobealign(int argc, char **argv) {
   logger.set_level(opt.verbose ? LOG_DEBUG : LOG_INFO);
   logger.info() << std::setprecision(2) << std::fixed;
   logger.info() << "This is accel-align using strobealign indexing" << '\n';
-  warn_if_no_optimizations();
+
 
   if (opt.c >= 64 || opt.c <= 0) {
     throw BadParameter("c must be greater than 0 and less than 64");
