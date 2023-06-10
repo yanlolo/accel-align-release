@@ -184,4 +184,8 @@ private:
     RandstrobeMap randstrobe_map; // k-mer -> (offset in flat_vector, occurence count )
 };
 
+InputBuffer get_input_buffer(const CommandLineOptions& opt);
+void log_parameters(const IndexParameters& index_parameters, const mapping_params& map_param, const alignment_params& aln_params);
+std::string sam_header(const References& references, const std::string& read_group_id, const std::vector<std::string>& read_group_fields, const std::string& cmd_line);
+
 #endif
