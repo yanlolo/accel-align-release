@@ -3127,7 +3127,7 @@ int main(int argc, char **argv) {
 
   auto start = std::chrono::system_clock::now();
 
-  AccAlign f(NULL);
+  AccAlign f(r);
   f.open_output(g_out);
 
 
