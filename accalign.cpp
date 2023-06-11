@@ -3223,7 +3223,7 @@ int main(int argc, char **argv) {
 
 
   if (opn == argc - 1) {
-    f.fastq(argv[opn], "\0", false);
+    f.fastq(argv[opn], "\0", false, index_parameters, index);
 //    f.tbb_fastq(av[opn], "\0");
   } else if (opn == argc - 2) {
 //    f.fastq(av[opn], av[opn + 1], false);
