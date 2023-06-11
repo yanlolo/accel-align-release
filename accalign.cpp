@@ -3055,7 +3055,7 @@ std::string sam_header(const References& references, const std::string& read_gro
 int main(int ac, char **av) {
 
 
-   Accel-Align Setup
+  // Accel-Align Setup
   if (ac < 3) {
     print_usage();
     return 0;
