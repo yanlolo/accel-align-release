@@ -3117,7 +3117,7 @@ int main(int argc, char **argv) {
     r[0] = new Reference(argv[opn], enable_minimizer, 'c');
     r[1] = new Reference(argv[opn++], enable_minimizer, 'g');
   } else {
-    r[0] = new Reference(argv[opn++], enable_minimizer, ' ');
+    r[0] = new Reference(argv[2], enable_minimizer, ' ');
   }
 
   if (enable_extension && !enable_wfa_extension)
