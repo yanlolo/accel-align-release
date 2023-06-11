@@ -3182,7 +3182,7 @@ int main(int argc, char **argv) {
   logger.debug() << "Threads: " << opt.n_threads << std::endl;
 
 
-  // Create index
+  // Retrieve Strobealign index
   References references;
   Timer read_refs_timer;
   references = References::from_fasta(opt.ref_filename);
@@ -3199,15 +3199,11 @@ int main(int argc, char **argv) {
   StrobemerIndex index(references, index_parameters);
 
   // Read the index from a file
-  assert(!opt.only_gen_index);
   Timer read_index_timer;
   std::string sti_path = opt.ref_filename + index_parameters.filename_extension();
   logger.info() << "Reading index from " << sti_path << '\n';
   index.read(sti_path);
   logger.info() << "Total time reading index: " << read_index_timer.elapsed() << " s\n";
-
-
-
 
 
   logger.info() << "Running in " << (opt.is_SE ? "single-end" : "paired-end") << " mode" << std::endl;
@@ -3222,7 +3218,7 @@ int main(int argc, char **argv) {
 
 
 
-  if (opn == argc - 1) {
+  if (opt.is_SE) {
     f.fastq(argv[opn], "\0", false, index_parameters, index);
 //    f.tbb_fastq(av[opn], "\0");
   } else if (opn == argc - 2) {
