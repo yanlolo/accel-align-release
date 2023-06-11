@@ -3108,16 +3108,25 @@ int main(int argc, char **argv) {
   cerr << "Using " << g_ncpus << " cpus " << endl;
   cerr << "Using kmer length " << kmer_len << " and step size " << kmer_step << endl;
 
+
+  const char *reference_file = argv[2];
+  const char *read_file_01 = argv[3];
+  const char *read_file_02;
+  if(!opt.is_SE) {
+    read_file_02 = argv[4];
+  }
+
   tbb::task_scheduler_init init(g_ncpus);
   make_code();
 
   // load reference once
   Reference **r = new Reference*[2];
+
   if (enable_bs){
     r[0] = new Reference(argv[opn], enable_minimizer, 'c');
     r[1] = new Reference(argv[opn++], enable_minimizer, 'g');
   } else {
-    r[0] = new Reference(argv[2], enable_minimizer, ' ');
+    r[0] = new Reference(reference_file, enable_minimizer, ' ');
   }
 
   if (enable_extension && !enable_wfa_extension)
@@ -3219,7 +3228,7 @@ int main(int argc, char **argv) {
 
 
   if (opt.is_SE) {
-    f.fastq(argv[opn], "\0", false, index_parameters, index);
+    f.fastq(read_file_01, "\0", false, index_parameters, index);
 //    f.tbb_fastq(av[opn], "\0");
   } else if (opn == argc - 2) {
 //    f.fastq(av[opn], av[opn + 1], false);
