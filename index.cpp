@@ -139,7 +139,7 @@ int run_strobealign(int argc, char **argv) {
     logger.info() << "Estimated read length: " << opt.r << " bp\n";
   }
   input_buffer.rewind_reset();
-  IndexParameters index_param eters = IndexParameters::from_read_length(
+  IndexParameters index_parameters = IndexParameters::from_read_length(
           opt.r,
           opt.k_set ? opt.k : IndexParameters::DEFAULT,
           opt.s_set ? opt.s : IndexParameters::DEFAULT,
