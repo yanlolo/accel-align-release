@@ -1,8 +1,6 @@
 #include "header.h"
 #include "accalign.h"
 #include "ksw2.h"
-#include "strobealign/ext/hyperloglog/hyperloglog.hpp"
-#include "strobealign/io.hpp"
 #include "strobealign/timer.hpp"
 #include "strobealign/logger.hpp"
 
