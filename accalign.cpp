@@ -3113,12 +3113,12 @@ int main(int argc, char **argv) {
 
   // load reference once
   Reference **r = new Reference*[2];
-  /*if (enable_bs){
+  if (enable_bs){
     r[0] = new Reference(argv[opn], enable_minimizer, 'c');
     r[1] = new Reference(argv[opn++], enable_minimizer, 'g');
   } else {
     r[0] = new Reference(argv[opn++], enable_minimizer, ' ');
-  }*/
+  }
 
   if (enable_extension && !enable_wfa_extension)
     ksw_gen_simple_mat(5, mat, SC_MCH, SC_MIS, SC_AMBI);
