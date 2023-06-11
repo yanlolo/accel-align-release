@@ -3052,61 +3052,61 @@ std::string sam_header(const References& references, const std::string& read_gro
 
 
 
-int main(int ac, char **av) {
+int main(int argc, char **argv) {
 
 
   // Accel-Align Setup
-  if (ac < 3) {
+  if (argc < 3) {
     print_usage();
     return 0;
   }
 
   int opn = 1;
   int kmer_temp = 0;
-  while (opn < ac) {
+  while (opn < argc) {
     bool flag = false;
-    if (av[opn][0] == '-') {
-      if (av[opn][1] == 't') {
-        g_ncpus = atoi(av[opn + 1]);
+    if (argv[opn][0] == '-') {
+      if (argv[opn][1] == 't') {
+        g_ncpus = atoi(argv[opn + 1]);
         opn += 2;
         flag = true;
-      } else if (av[opn][1] == 'l') {
-        kmer_temp = atoi(av[opn + 1]);
+      } else if (argv[opn][1] == 'l') {
+        kmer_temp = atoi(argv[opn + 1]);
         opn += 2;
         flag = true;
-      } else if (av[opn][1] == 'o') {
-        g_out = av[opn + 1];
+      } else if (argv[opn][1] == 'o') {
+        g_out = argv[opn + 1];
         opn += 2;
         flag = true;
-      } else if (av[opn][1] == 'e') {
-        g_embed_file = av[opn + 1];
+      } else if (argv[opn][1] == 'e') {
+        g_embed_file = argv[opn + 1];
         opn += 2;
         flag = true;
-      } else if (av[opn][1] == 'b') {
-        g_batch_file = av[opn + 1];
+      } else if (argv[opn][1] == 'b') {
+        g_batch_file = argv[opn + 1];
         opn += 2;
         flag = true;
-      } else if (av[opn][1] == 'p') {
-        pairdis = atoi(av[opn + 1]);
+      } else if (argv[opn][1] == 'p') {
+        pairdis = atoi(argv[opn + 1]);
         opn += 2;
         flag = true;
-      } else if (av[opn][1] == 'x') {
+      } else if (argv[opn][1] == 'x') {
         enable_extension = false;
         opn += 1;
         flag = true;
-      } else if (av[opn][1] == 'w') {
+      } else if (argv[opn][1] == 'w') {
         enable_wfa_extension = true;
         opn += 1;
         flag = true;
-      } else if (av[opn][1] == 'd') {
+      } else if (argv[opn][1] == 'd') {
         extend_all = true;
         opn += 1;
         flag = true;
-      } else if (av[opn][1] == 'm') {
+      } else if (argv[opn][1] == 'm') {
         enable_minimizer = true;
         opn += 1;
         flag = true;
-      } else if (av[opn][1] == 's') {
+      } else if (argv[opn][1] == 's') {
         enable_bs = true;
         opn += 1;
         flag = true;
@@ -3130,10 +3130,10 @@ int main(int ac, char **av) {
   // load reference once
   Reference **r = new Reference*[2];
   if (enable_bs){
-    r[0] = new Reference(av[opn], enable_minimizer, 'c');
-    r[1] = new Reference(av[opn++], enable_minimizer, 'g');
+    r[0] = new Reference(argv[opn], enable_minimizer, 'c');
+    r[1] = new Reference(argv[opn++], enable_minimizer, 'g');
   } else {
-    r[0] = new Reference(av[opn++], enable_minimizer, ' ');
+    r[0] = new Reference(argv[opn++], enable_minimizer, ' ');
   }
 
   if (enable_extension && !enable_wfa_extension)
@@ -3151,7 +3151,9 @@ int main(int ac, char **av) {
 
   // Strobealign Setup
 
-  auto opt = parse_command_line_arguments(ac, av);
+  // accalign command: ./accalign -l 32 -t 7 -s <path-to-ref-genome>/<ref-genome>.fna <path-to-input-folder>/<input-file>.fq > <path-to-output-folder>/<output-file>.sam
+  // strobealign command: strobealign --use-index ref.fa reads.1.fastq.gz reads.2.fastq.gz
+  auto opt = parse_command_line_arguments(argc, argv);
 
   logger.set_level(opt.verbose ? LOG_DEBUG : LOG_INFO);
   logger.info() << std::setprecision(2) << std::fixed;
@@ -3243,8 +3245,8 @@ int main(int ac, char **av) {
 
   if (map_param.is_sam_out) {
     std::stringstream cmd_line;
-    for(int i = 0; i < ac; ++i) {
-      cmd_line << av[i] << " ";
+    for(int i = 0; i < argc; ++i) {
+      cmd_line << argv[i] << " ";
     }
 
     out << sam_header(references, opt.read_group_id, opt.read_group_fields, cmd_line.str());
@@ -3264,12 +3266,12 @@ int main(int ac, char **av) {
 
 
 
-  if (opn == ac - 1) {
-    f.fastq(av[opn], "\0", false);
+  if (opn == argc - 1) {
+    f.fastq(argv[opn], "\0", false);
 //    f.tbb_fastq(av[opn], "\0");
-  } else if (opn == ac - 2) {
+  } else if (opn == argc - 2) {
 //    f.fastq(av[opn], av[opn + 1], false);
-    f.tbb_fastq(av[opn], av[opn + 1]);
+    f.tbb_fastq(argv[opn], argv[opn + 1]);
   } else {
     print_usage();
     return 0;

@@ -311,6 +311,7 @@ int run_strobealign(int argc, char **argv) {
 
 int main(int argc, char **argv) {
   try {
+    logger.info() << argv << std::endl;
     return run_strobealign(argc, argv);
   } catch (BadParameter& e) {
     logger.error() << "A mapping or seeding parameter is invalid: " << e.what() << std::endl;
