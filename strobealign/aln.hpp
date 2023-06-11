@@ -4,7 +4,7 @@
 #include <string>
 #include <vector>
 #include "ext/kseq++.hpp"
-#include "../index.hpp"
+#include "../strobealign-integrator.hpp"
 #include "refs.hpp"
 #include "sam.hpp"
 #include "aligner.hpp"

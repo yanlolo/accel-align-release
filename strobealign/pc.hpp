@@ -13,7 +13,7 @@
 #include <unordered_map>
 #include <optional>
 
-#include "../index.hpp"
+#include "../strobealign-integrator.hpp"
 #include "aln.hpp"
 #include "refs.hpp"
 #include "fastq.hpp"

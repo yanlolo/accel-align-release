@@ -14,7 +14,7 @@
 #include "strobealign/refs.hpp"
 #include "strobealign/exceptions.hpp"
 #include "strobealign/cmdline.hpp"
-#include "index.hpp"
+#include "strobealign-integrator.hpp"
 #include "strobealign/pc.hpp"
 #include "strobealign/aln.hpp"
 #include "strobealign/logger.hpp"
