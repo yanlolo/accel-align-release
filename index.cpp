@@ -127,6 +127,7 @@ int run_strobealign(int argc, char **argv) {
   logger.set_level(opt.verbose ? LOG_DEBUG : LOG_INFO);
   logger.info() << std::setprecision(2) << std::fixed;
   logger.info() << "This is accel-align using strobealign indexing" << '\n';
+  logger.info() << argv << '\n';
 
 
   if (opt.c >= 64 || opt.c <= 0) {
@@ -311,7 +312,6 @@ int run_strobealign(int argc, char **argv) {
 
 int main(int argc, char **argv) {
   try {
-    logger.info() << argv << std::endl;
     return run_strobealign(argc, argv);
   } catch (BadParameter& e) {
     logger.error() << "A mapping or seeding parameter is invalid: " << e.what() << std::endl;
