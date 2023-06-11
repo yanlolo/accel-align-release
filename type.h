@@ -2,6 +2,8 @@
 
 #include "const.h"
 #include "minimap.h"
+#include "strobealign-integrator.hpp"
+#include "strobealign/indexparameters.hpp"
 
 struct Alignment {
   std::string cigar_string;
@@ -70,7 +72,7 @@ class Reference {
   ~Reference();
 };
 
-typedef std::tuple<Read *, Read *, int> ReadCnt;
+typedef std::tuple<Read *, Read *, int, IndexParameters, StrobemerIndex> ReadCnt;
 
 typedef std::tuple<Read *, Read *> ReadPair;
 
