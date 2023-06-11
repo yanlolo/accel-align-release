@@ -3070,10 +3070,6 @@ int main(int argc, char **argv) {
         g_ncpus = atoi(argv[opn + 1]);
         opn += 2;
         flag = true;
-      } else if (argv[opn][1] == 'l') {
-        kmer_temp = atoi(argv[opn + 1]);
-        opn += 2;
-        flag = true;
       } else if (argv[opn][1] == 'o') {
         g_out = argv[opn + 1];
         opn += 2;
@@ -3089,22 +3085,6 @@ int main(int argc, char **argv) {
       } else if (argv[opn][1] == 'p') {
         pairdis = atoi(argv[opn + 1]);
         opn += 2;
-        flag = true;
-      } else if (argv[opn][1] == 'x') {
-        enable_extension = false;
-        opn += 1;
-        flag = true;
-      } else if (argv[opn][1] == 'w') {
-        enable_wfa_extension = true;
-        opn += 1;
-        flag = true;
-      } else if (argv[opn][1] == 'd') {
-        extend_all = true;
-        opn += 1;
-        flag = true;
-      } else if (argv[opn][1] == 'm') {
-        enable_minimizer = true;
-        opn += 1;
         flag = true;
       } else if (argv[opn][1] == 's') {
         enable_bs = true;
