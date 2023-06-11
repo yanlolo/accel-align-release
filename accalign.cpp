@@ -1,4 +1,7 @@
 #include "header.h"
+
+#include <iomanip>
+
 #include "accalign.h"
 #include "ksw2.h"
 #include "strobealign/timer.hpp"
