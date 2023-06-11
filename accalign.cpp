@@ -3263,27 +3263,27 @@ int main(int ac, char **av) {
 
 
 
-  if (opn == ac - 1) {
-    f.fastq(av[opn], "\0", false);
-//    f.tbb_fastq(av[opn], "\0");
-  } else if (opn == ac - 2) {
-//    f.fastq(av[opn], av[opn + 1], false);
-    f.tbb_fastq(av[opn], av[opn + 1]);
-  } else {
-    print_usage();
-    return 0;
-  }
-
-  auto end = std::chrono::system_clock::now();
-  auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-  cerr << "Time to align: " << elapsed.count() / 1000 << " secs\n";
-
-  f.print_stats();
-  f.close_output();
-
-  delete[] r;
-
-  cerr << "Total time: " << (time(NULL) - total_begin) << " secs\n";
+//  if (opn == ac - 1) {
+//    f.fastq(av[opn], "\0", false);
+////    f.tbb_fastq(av[opn], "\0");
+//  } else if (opn == ac - 2) {
+////    f.fastq(av[opn], av[opn + 1], false);
+//    f.tbb_fastq(av[opn], av[opn + 1]);
+//  } else {
+//    print_usage();
+//    return 0;
+//  }
+//
+//  auto end = std::chrono::system_clock::now();
+//  auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+//  cerr << "Time to align: " << elapsed.count() / 1000 << " secs\n";
+//
+//  f.print_stats();
+//  f.close_output();
+//
+//  delete[] r;
+//
+//  cerr << "Total time: " << (time(NULL) - total_begin) << " secs\n";
 
   return 0;
 }
