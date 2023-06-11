@@ -3055,6 +3055,10 @@ std::string sam_header(const References& references, const std::string& read_gro
 int main(int argc, char **argv) {
 
 
+  auto opt = parse_command_line_arguments(argc, argv);
+  logger.set_level(opt.verbose ? LOG_DEBUG : LOG_INFO);
+  logger.info() << std::setprecision(2) << std::fixed;
+
   // Accel-Align Setup
   if (argc < 3) {
     print_usage();
@@ -3133,10 +3137,9 @@ int main(int argc, char **argv) {
 
   // accalign command: ./accalign -l 32 -t 7 -s <path-to-ref-genome>/<ref-genome>.fna <path-to-input-folder>/<input-file>.fq > <path-to-output-folder>/<output-file>.sam
   // strobealign command: strobealign --use-index ref.fa reads.1.fastq.gz reads.2.fastq.gz
-  auto opt = parse_command_line_arguments(argc, argv);
 
-  logger.set_level(opt.verbose ? LOG_DEBUG : LOG_INFO);
-  logger.info() << std::setprecision(2) << std::fixed;
+
+
 
   if (opt.c >= 64 || opt.c <= 0) {
     throw BadParameter("c must be greater than 0 and less than 64");
