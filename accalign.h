@@ -104,7 +104,7 @@ class AccAlign {
 
   void open_output(std::string &out_file);
   void close_output();
-  bool fastq(const char *F1, const char *F2, bool enable_gpu);
+  bool fastq(const char *F1, const char *F2, bool enable_gpu, IndexParameters& index_parameters, StrobemerIndex& index);
   void print_stats();
   void map_read(Read &R, int ref_id);
   void align_read(Read &R);

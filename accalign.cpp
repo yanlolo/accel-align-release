@@ -145,7 +145,7 @@ void AccAlign::print_stats() {
 //#endif
 }
 
-bool AccAlign::fastq(const char *F1, const char *F2, bool enable_gpu) {
+bool AccAlign::fastq(const char *F1, const char *F2, bool enable_gpu, IndexParameters& index_parameters, StrobemerIndex& index) {
 
   bool is_paired = false;
 
@@ -3127,7 +3127,7 @@ int main(int argc, char **argv) {
 
   auto start = std::chrono::system_clock::now();
 
-  AccAlign f(r);
+  AccAlign f((Reference *) NULL);
   f.open_output(g_out);
 
 
@@ -3207,35 +3207,8 @@ int main(int argc, char **argv) {
   logger.info() << "Total time reading index: " << read_index_timer.elapsed() << " s\n";
 
 
-  // Map/align reads
 
-  Timer map_align_timer;
-  map_param.rescue_cutoff = map_param.R < 100 ? map_param.R * index.filter_cutoff : 1000;
-  logger.debug() << "Using rescue cutoff: " << map_param.rescue_cutoff << std::endl;
 
-  std::streambuf* buf;
-  std::ofstream of;
-
-  if (!opt.write_to_stdout) {
-    of.open(opt.output_file_name);
-    buf = of.rdbuf();
-  }
-  else {
-    buf = std::cout.rdbuf();
-  }
-
-  std::ostream out(buf);
-
-  if (map_param.is_sam_out) {
-    std::stringstream cmd_line;
-    for(int i = 0; i < argc; ++i) {
-      cmd_line << argv[i] << " ";
-    }
-
-    out << sam_header(references, opt.read_group_id, opt.read_group_fields, cmd_line.str());
-  }
-
-  std::vector<AlignmentStatistics> log_stats_vec(opt.n_threads);
 
   logger.info() << "Running in " << (opt.is_SE ? "single-end" : "paired-end") << " mode" << std::endl;
   logger.info() << "Finished Strobealign Setup" << std::endl;
