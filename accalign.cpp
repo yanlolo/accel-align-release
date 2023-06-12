@@ -1563,16 +1563,12 @@ void AccAlign::map_read(Read &R, int ref_id, StrobemerIndex &index, IndexParamet
   auto start = std::chrono::system_clock::now();
   vector<Region> fcandidate_regions, rcandidate_regions;
 
-  StrobemerIndex test = index;
-  IndexParameters testParams = indexParameters;
-
-
   // first try pigenhole. if we generate any candidates, pass them through
   // lsh. If something comes out, we are done.
   // XXX: On experimentation, it was found that using pigeonhole filtering
   // produces wrong results and invalid mappings when errors are too large.
   unsigned fbest = 0, rbest = 0;
-  pghole_wrapper(R, fcandidate_regions, rcandidate_regions, fbest, rbest, ref_id);
+  pghole_wrapper(R, fcandidate_regions, rcandidate_regions, fbest, rbest, ref_id, index, indexParameters);
   unsigned nfregions = fcandidate_regions.size();
   unsigned nrregions = rcandidate_regions.size();
   auto end = std::chrono::system_clock::now();
