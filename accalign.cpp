@@ -746,8 +746,8 @@ void AccAlign::pghole_wrapper(Read &R,
 
   // Retrieve Candidate Regions using Strobealign index
 
-  find_candidate_positions_using_strobealign(std::string(R.seq), fcandidate_regions, true, index, index_parameters);
-
+  find_candidate_positions_using_strobealign(std::string(R.seq), fcandidate_regions, false, index, index_parameters);
+  find_candidate_positions_using_strobealign(std::string(R.seq), rcandidate_regions, true, index, index_parameters);
 
   // Retrieve Candidate Regions using Accel-Align index
   if (enable_minimizer){
@@ -808,10 +808,23 @@ void AccAlign::pghole_wrapper(Read &R,
   }
 }
 
-void AccAlign::find_candidate_positions_using_strobealign(std::string_view seq, vector<Region> &fcandidate_regions, bool forward, StrobemerIndex &index, IndexParameters& index_parameters){
+// @param direction: "false", if forward strang, "true" if reverse strang
+void AccAlign::find_candidate_positions_using_strobealign(std::string_view seq, vector<Region> &candidate_regions, bool direction, StrobemerIndex &index, IndexParameters& index_parameters){
   auto query_randstrobes = randstrobes_query(seq, index_parameters);
   auto [nonrepetitive_fraction, nams] = find_nams(query_randstrobes, index);
 
+  Region region;
+  for(Nam &nam: nams) {
+    if(nam.is_rc == direction) {
+      region.rs = nam.ref_s;
+      region.re = nam.ref_e;
+      region.qs = nam.query_s;
+      region.qe = nam.query_e;
+      region.cov = nam.n_hits;
+      region.score = (int)nam.score;
+      candidate_regions.push(region);
+    }
+  }
 }
 
 void AccAlign::merge_interval(Region &r, uint32_t last_q_pos, int32_t k) {
