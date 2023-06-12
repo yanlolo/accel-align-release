@@ -3105,6 +3105,7 @@ int main(int argc, char **argv) {
 
   int opn = 1;
   int kmer_temp = 0;
+  const char *reference_file;
   while (opn < argc) {
     bool option_found = false;
     if (argv[opn][0] == '-') {
@@ -3134,6 +3135,7 @@ int main(int argc, char **argv) {
         option_found = true;
       } */
       else if (std::string(argv[opn]) == "--use-index") {
+        reference_file = argv[opn++];
         opn += 1;
         option_found = true;
       } else {
@@ -3149,8 +3151,10 @@ int main(int argc, char **argv) {
 
   cerr << "Using " << g_ncpus << " cpus " << endl;
 
-
-  const char *reference_file = argv[opn];
+  if(!reference_file) {
+    cerr << "Please provide a valid reference file" << endl;
+    return 1;
+  }
   const char *read_file_01 = argv[++opn];
   const char *read_file_02;
   if(!opt.is_SE) {
