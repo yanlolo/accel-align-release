@@ -72,7 +72,7 @@ class Reference {
   ~Reference();
 };
 
-typedef std::tuple<Read *, Read *, int, StrobemerIndex&> ReadCnt;
+typedef std::tuple<Read *, Read *, int, StrobemerIndex*> ReadCnt;
 
 typedef std::tuple<Read *, Read *> ReadPair;
 
