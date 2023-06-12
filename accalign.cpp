@@ -358,7 +358,7 @@ class Parallel_mapper {
   void operator()(const tbb::blocked_range<size_t> &r) const {
     if (!all_reads2) {
       for (size_t i = r.begin(); i != r.end(); ++i) {
-        acc_obj->map_read_wrapper(*(all_reads1 + i));
+        acc_obj->map_read_wrapper(*(all_reads1 + i), *index, *indexParameters);
       }
     } else {
       for (size_t i = r.begin(); i != r.end(); ++i) {
@@ -1782,8 +1782,8 @@ void AccAlign::map_paired_read(Read &mate1, Read &mate2, int ref_id) {
   seeding_time += elapsed.count();
 
   if (!has_f1r2 && !has_r1f2) {
-    map_read_wrapper(mate1);
-    map_read_wrapper(mate2);
+    map_read_wrapper(mate1, NULL, NULL);
+    map_read_wrapper(mate2, NULL, NULL);
     if (mate1.strand == '*' && mate2.strand == '*')
       return;
     else if ((mate1.strand != '*' && mate2.strand != '*' && mate1.best_region.embed_dist < mate2.best_region.embed_dist)
@@ -2833,7 +2833,7 @@ struct tbb_map {
   tbb_map(AccAlign *obj) : accalign(obj) {}
 
   Read *operator()(Read *r) {
-    accalign->map_read_wrapper(*r);
+    accalign->map_read_wrapper(*r, NULL, NULL);
     return r;
   }
 
