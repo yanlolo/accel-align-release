@@ -1545,10 +1545,14 @@ int AccAlign::get_mapq(int best, int secBest) {
   return mapq;
 }
 
-void AccAlign::map_read(Read &R, int ref_id) {
+void AccAlign::map_read(Read &R, int ref_id, StrobemerIndex &index, IndexParameters &indexParameters) {
 
   auto start = std::chrono::system_clock::now();
   vector<Region> fcandidate_regions, rcandidate_regions;
+
+  StrobemerIndex test = index;
+  IndexParameters testParams = indexParameters;
+
 
   // first try pigenhole. if we generate any candidates, pass them through
   // lsh. If something comes out, we are done.
@@ -1660,14 +1664,11 @@ void AccAlign::map_read_wrapper(Read &R, StrobemerIndex *index, IndexParameters 
   auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
   parse_time += elapsed.count();
 
-  StrobemerIndex *test = index;
-  IndexParameters *testParams = indexParameters;
-
-  map_read(R, 0);
+  map_read(R, 0, *index, *indexParameters);
   R.ref_id = 0;
 
   if (enable_bs){
-    map_read(R, 1);
+    map_read(R, 1, *index, *indexParameters);
     if (R.best > R.best_optional){
       R.strand = R.strand_optional;
       R.best_region = R.best_region_optional;
