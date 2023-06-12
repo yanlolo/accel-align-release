@@ -340,7 +340,7 @@ void AccAlign::output_root_fn(tbb::concurrent_bounded_queue<ReadCnt> *outputQ,
     }
     Read *read01 = std::get<0>(gpu_reads);
     Read *read02 = std::get<1>(gpu_reads);
-    align_wrapper(0, 0, nreads, std::get<0>(gpu_reads), std::get<1>(gpu_reads), dataQ);
+    align_wrapper(0, 0, nreads, read01, read02, dataQ);
   } while (1);
 
   cerr << "Extension and output function quitting...\n";
