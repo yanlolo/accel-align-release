@@ -806,7 +806,7 @@ void AccAlign::pghole_wrapper(Read &R,
   }
 }
 
-void findCandidatePositionsUsingStrobealign(std::string_view seq, vector<Region> &fcandidate_regions, bool forward, StrobemerIndex &index, IndexParameters& parameters){
+void AccAlign::findCandidatePositionsUsingStrobealign(std::string_view seq, vector<Region> &fcandidate_regions, bool forward, StrobemerIndex &index, IndexParameters& parameters){
 
 
 }
