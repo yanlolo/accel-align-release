@@ -105,17 +105,15 @@ gzFile &operator>>(gzFile &in, Read &r) {
 }
 
 void print_usage() {
-  cerr << "accalign [options] <ref.fa> [read1.fastq] [read2.fastq]\n";
+  cerr << "accalign [options] --use-index <ref.fa> [read1.fastq] [read2.fastq]\n";
   cerr << "\t Maximum read length supported is 512\n";
   cerr << "options:\n";
   cerr << "\t-t INT Number of cpu threads to use [all]\n";
-  cerr << "\t-l INT Length of seed [32]\n";
   cerr << "\t-o Name of the output file \n";
   cerr << "\t-x Alignment-free mode\n";
   cerr << "\t-w Use WFA for extension. KSW used by default. \n";
   cerr << "\t-p Maximum distance allowed between the paired-end reads [1000]\n";
   cerr << "\t-d Disable embedding, extend all candidates from seeding (this mode is super slow, only for benchmark).\n";
-  cerr << "\t-m Seeding with minimizer.\n";
   cerr << "\t-s bisulfite sequencing read alignment mode \n";
 
 }
@@ -3093,6 +3091,7 @@ int main(int argc, char **argv) {
   logger.info() << std::setprecision(2) << std::fixed;
 
   // Accel-Align Setup
+  logger.info() << "Starting Accel-Align Setup" << std::endl;
   if (argc < 3) {
     print_usage();
     return 0;
@@ -3127,7 +3126,10 @@ int main(int argc, char **argv) {
         enable_bs = true;
         opn += 1;
         flag = true;
-      } else {
+      } else if (std::string(argv[opn]) == "--use-index") {
+        flag = true;
+      }
+      else {
         print_usage();
       }
     }
@@ -3139,7 +3141,6 @@ int main(int argc, char **argv) {
   mask = kmer_len == 32 ? ~0 : (1ULL << (kmer_len * 2)) - 1;
 
   cerr << "Using " << g_ncpus << " cpus " << endl;
-  cerr << "Using kmer length " << kmer_len << " and step size " << kmer_step << endl;
 
 
   const char *reference_file = argv[2];
@@ -3174,6 +3175,7 @@ int main(int argc, char **argv) {
 
 
   logger.info() << "Finished Accel-Align Setup" << std::endl;
+  logger.info() << "Starting Strobealign Setup" << std::endl;
 
   // Strobealign Setup
 
@@ -3240,7 +3242,7 @@ int main(int argc, char **argv) {
 
   StrobemerIndex index(references, index_parameters);
 
-  // Read the index from a file
+  // Read the index from the provided file
   Timer read_index_timer;
   std::string sti_path = opt.ref_filename + index_parameters.filename_extension();
   logger.info() << "Reading index from " << sti_path << '\n';
