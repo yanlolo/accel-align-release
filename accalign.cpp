@@ -211,9 +211,9 @@ bool AccAlign::fastq(const char *F1, const char *F2, bool enable_gpu, IndexParam
 
     if (nreads_per_vec == batch_size) {
       if (is_paired)
-        inputQ.push(make_tuple(reads[vec_index], reads2[vec_index], batch_size, index_parameters, index));
+        inputQ.push(make_tuple(reads[vec_index], reads2[vec_index], batch_size, index));
       else
-        inputQ.push(make_tuple(reads[vec_index], (Read *) NULL, batch_size, index_parameters, index));
+        inputQ.push(make_tuple(reads[vec_index], (Read *) NULL, batch_size, index));
 
       vec_index++;
 
@@ -234,9 +234,9 @@ bool AccAlign::fastq(const char *F1, const char *F2, bool enable_gpu, IndexParam
   if (nreads_per_vec && vec_index < vec_size) {
     // the remaining reads
     if (is_paired)
-      inputQ.push(make_tuple(reads[vec_index], reads2[vec_index], nreads_per_vec, index_parameters, index));
+      inputQ.push(make_tuple(reads[vec_index], reads2[vec_index], nreads_per_vec, index));
     else
-      inputQ.push(make_tuple(reads[vec_index], (Read *) NULL, nreads_per_vec, index_parameters,index));
+      inputQ.push(make_tuple(reads[vec_index], (Read *) NULL, nreads_per_vec, index));
 
     total_nreads += nreads_per_vec;
   } else {
@@ -265,7 +265,7 @@ bool AccAlign::fastq(const char *F1, const char *F2, bool enable_gpu, IndexParam
       ++nreads_per_vec;
 
       if (nreads_per_vec == batch_size) {
-        inputQ.push(make_tuple(std::get<0>(cur_vec), std::get<1>(cur_vec), batch_size, index_parameters, index));
+        inputQ.push(make_tuple(std::get<0>(cur_vec), std::get<1>(cur_vec), batch_size, index));
         dataQ.pop(cur_vec);
         total_nreads += nreads_per_vec;
         nreads_per_vec = 0;
@@ -275,7 +275,7 @@ bool AccAlign::fastq(const char *F1, const char *F2, bool enable_gpu, IndexParam
     // the remaining reads
     if (nreads_per_vec) {
       total_nreads += nreads_per_vec;
-      inputQ.push(make_tuple(std::get<0>(cur_vec), std::get<1>(cur_vec), nreads_per_vec, index_parameters, index));
+      inputQ.push(make_tuple(std::get<0>(cur_vec), std::get<1>(cur_vec), nreads_per_vec, index));
     }
   }
 
@@ -291,7 +291,7 @@ bool AccAlign::fastq(const char *F1, const char *F2, bool enable_gpu, IndexParam
   cerr << "done reading " << total_nreads << " reads from fastq file " << F1 << ", " << F2 << " in " <<
        input_io_time / 1000000.0 << " secs\n";
 
-  ReadCnt sentinel = make_tuple((Read *) NULL, (Read *) NULL, 0, index_parameters, index);
+  ReadCnt sentinel = make_tuple((Read *) NULL, (Read *) NULL, 0, index);
   inputQ.push(sentinel);
 
   int size = vec_index < vec_size ? vec_index : vec_size;
@@ -377,7 +377,7 @@ void AccAlign::cpu_root_fn(tbb::concurrent_bounded_queue<ReadCnt> *inputQ,
     targetQ->pop(cpu_readcnt);
     nreads = std::get<2>(cpu_readcnt);
     total += nreads;
-    IndexParameters indexParameters = std::get<3>(cpu_readcnt);
+    //IndexParameters indexParameters = std::get<3>(cpu_readcnt);
     StrobemerIndex index = std::get<4>(cpu_readcnt);
     if (nreads == 0) {
       inputQ->push(cpu_readcnt);    // push sentinel back
