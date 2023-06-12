@@ -735,10 +735,19 @@ void AccAlign::pghole_wrapper(Read &R,
                               vector<Region> &fcandidate_regions,
                               vector<Region> &rcandidate_regions,
                               unsigned &fbest,
-                              unsigned &rbest, int ref_id) {
+                              unsigned &rbest,
+                              int ref_id,
+                              StrobemerIndex &index,
+                              IndexParameters &indexParameters) {
   size_t rlen = strlen(R.seq);
   int err_threshold = 2;
 
+  // Retrieve Candidate Regions using Strobealign index
+
+  findCandidatePositionsUsingStrobealign(std::string(R.seq), fcandidate_regions, true, index, indexParameters);
+
+
+  // Retrieve Candidate Regions using Accel-Align index
   if (enable_minimizer){
     mm128_v mv = {0, 0, 0};
     void *km = nullptr;
@@ -795,6 +804,10 @@ void AccAlign::pghole_wrapper(Read &R,
 //    kmer_step = kmer_step / 2;
     }
   }
+}
+
+void findCandidatePositionsUsingStrobealign(std::string_view seq, vector<Region> &fcandidate_regions, bool forward, StrobemerIndex &index, IndexParameters& parameters){
+
 
 }
 

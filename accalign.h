@@ -33,7 +33,7 @@ class AccAlign {
                      vector<Region> &rregion, unsigned &fbest, unsigned &fnext, unsigned &rbest,
                      unsigned &rnext, int &best_threshold, int &next_threshold, int ref_id);
   void pghole_wrapper(Read &R, vector<Region> &fcandidate_regions, vector<Region> &rcandidate_regions,
-                      unsigned &fbest, unsigned &rbest, int ref_id);
+                      unsigned &fbest, unsigned &rbest, int ref_id, StrobemerIndex &index, IndexParameters &indexParameters);
   void pigeonhole_query_topcov(char *Q, size_t rlen, vector<Region> &candidate_regions, char S, int err_threshold,
                                unsigned kmer_step, unsigned max_occ, unsigned &best, unsigned ori_slide, int ref_id);
   void pghole_wrapper_mates(Read &R, vector<Region> &fcandidate_regions, vector<Region> &rcandidate_regions,
@@ -73,6 +73,7 @@ class AccAlign {
                     unsigned &fbest, unsigned &rbest);
   inline uint32_t get_global_pos(uint64_t cr, int ref_id);
   inline uint64_t normalize_pos(uint64_t cr, uint32_t q_pos, int k, int rlen);
+  void findCandidatePositionsUsingStrobealign(std::string_view seq, vector<Region> &fcandidate_regions, bool forward, StrobemerIndex &index, IndexParameters& parameters);
 
  public:
   Reference **refs;
