@@ -740,13 +740,13 @@ void AccAlign::pghole_wrapper(Read &R,
                               unsigned &rbest,
                               int ref_id,
                               StrobemerIndex &index,
-                              IndexParameters &indexParameters) {
+                              IndexParameters &index_parameters) {
   size_t rlen = strlen(R.seq);
   int err_threshold = 2;
 
   // Retrieve Candidate Regions using Strobealign index
 
-  findCandidatePositionsUsingStrobealign(std::string(R.seq), fcandidate_regions, true, index, indexParameters);
+  find_candidate_positions_using_strobealign(std::string(R.seq), fcandidate_regions, true, index, index_parameters);
 
 
   // Retrieve Candidate Regions using Accel-Align index
@@ -808,7 +808,7 @@ void AccAlign::pghole_wrapper(Read &R,
   }
 }
 
-void AccAlign::findCandidatePositionsUsingStrobealign(std::string_view seq, vector<Region> &fcandidate_regions, bool forward, StrobemerIndex &index, IndexParameters& indexParameters){
+void AccAlign::find_candidate_positions_using_strobealign(std::string_view seq, vector<Region> &fcandidate_regions, bool forward, StrobemerIndex &index, IndexParameters& index_parameters){
   auto query_randstrobes = randstrobes_query(seq, index_parameters);
   auto [nonrepetitive_fraction, nams] = find_nams(query_randstrobes, index);
 
@@ -1561,7 +1561,7 @@ int AccAlign::get_mapq(int best, int secBest) {
   return mapq;
 }
 
-void AccAlign::map_read(Read &R, int ref_id, StrobemerIndex &index, IndexParameters &indexParameters) {
+void AccAlign::map_read(Read &R, int ref_id, StrobemerIndex &index, IndexParameters &index_parameters) {
 
   auto start = std::chrono::system_clock::now();
   vector<Region> fcandidate_regions, rcandidate_regions;
@@ -1571,7 +1571,7 @@ void AccAlign::map_read(Read &R, int ref_id, StrobemerIndex &index, IndexParamet
   // XXX: On experimentation, it was found that using pigeonhole filtering
   // produces wrong results and invalid mappings when errors are too large.
   unsigned fbest = 0, rbest = 0;
-  pghole_wrapper(R, fcandidate_regions, rcandidate_regions, fbest, rbest, ref_id, index, indexParameters);
+  pghole_wrapper(R, fcandidate_regions, rcandidate_regions, fbest, rbest, ref_id, index, index_parameters);
   unsigned nfregions = fcandidate_regions.size();
   unsigned nrregions = rcandidate_regions.size();
   auto end = std::chrono::system_clock::now();
@@ -1669,18 +1669,18 @@ void AccAlign::map_read(Read &R, int ref_id, StrobemerIndex &index, IndexParamet
   }
 }
 
-void AccAlign::map_read_wrapper(Read &R, StrobemerIndex *index, IndexParameters *indexParameters) {
+void AccAlign::map_read_wrapper(Read &R, StrobemerIndex *index, IndexParameters *index_parameters) {
   auto start = std::chrono::system_clock::now();
   parse(R.seq, R.fwd, R.rev, R.rev_str);
   auto end = std::chrono::system_clock::now();
   auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
   parse_time += elapsed.count();
 
-  map_read(R, 0, *index, *indexParameters);
+  map_read(R, 0, *index, *index_parameters);
   R.ref_id = 0;
 
   if (enable_bs){
-    map_read(R, 1, *index, *indexParameters);
+    map_read(R, 1, *index, *index_parameters);
     if (R.best > R.best_optional){
       R.strand = R.strand_optional;
       R.best_region = R.best_region_optional;
