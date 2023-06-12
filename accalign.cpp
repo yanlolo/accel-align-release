@@ -358,7 +358,7 @@ class Parallel_mapper {
   void operator()(const tbb::blocked_range<size_t> &r) const {
     if (!all_reads2) {
       for (size_t i = r.begin(); i != r.end(); ++i) {
-        acc_obj->map_read_wrapper(*(all_reads1 + i), *index, *indexParameters);
+        acc_obj->map_read_wrapper(*(all_reads1 + i), index, indexParameters);
       }
     } else {
       for (size_t i = r.begin(); i != r.end(); ++i) {
