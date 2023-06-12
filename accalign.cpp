@@ -748,7 +748,8 @@ void AccAlign::pghole_wrapper(Read &R,
   find_candidate_positions_using_strobealign(std::string(R.seq), rcandidate_regions, true, index, index_parameters);
 
   // Retrieve Candidate Regions using Accel-Align index
-  if (enable_minimizer){
+  // Commented out, due to usage of Strobealign index
+  /*if (enable_minimizer){
     mm128_v mv = {0, 0, 0};
     void *km = nullptr;
 
@@ -804,6 +805,7 @@ void AccAlign::pghole_wrapper(Read &R,
 //    kmer_step = kmer_step / 2;
     }
   }
+   */
 }
 
 // @param direction: "false", if forward strang, "true" if reverse strang
