@@ -1782,8 +1782,8 @@ void AccAlign::map_paired_read(Read &mate1, Read &mate2, int ref_id) {
   seeding_time += elapsed.count();
 
   if (!has_f1r2 && !has_r1f2) {
-    map_read_wrapper(mate1, (StrobemerIndex *) NULL, (IndexParameters *) NULL);
-    map_read_wrapper(mate2, (StrobemerIndex *) NULL, (IndexParameters *) NULL);
+    map_read_wrapper(mate1, NULL, NULL);
+    map_read_wrapper(mate2, NULL, NULL);
     if (mate1.strand == '*' && mate2.strand == '*')
       return;
     else if ((mate1.strand != '*' && mate2.strand != '*' && mate1.best_region.embed_dist < mate2.best_region.embed_dist)
@@ -2833,7 +2833,7 @@ struct tbb_map {
   tbb_map(AccAlign *obj) : accalign(obj) {}
 
   Read *operator()(Read *r) {
-    accalign->map_read_wrapper(*r, (StrobemerIndex *) NULL, (IndexParameters *) NULL);
+    accalign->map_read_wrapper(*r, NULL, NULL);
     return r;
   }
 
