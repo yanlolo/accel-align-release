@@ -3135,7 +3135,7 @@ int main(int argc, char **argv) {
         option_found = true;
       } */
       else if (std::string(argv[opn]) == "--use-index") {
-        reference_file = argv[opn++];
+        reference_file = argv[++opn];
         opn += 1;
         option_found = true;
       } else {
@@ -3155,7 +3155,7 @@ int main(int argc, char **argv) {
     cerr << "Please provide a valid reference file" << endl;
     return 1;
   }
-  const char *read_file_01 = argv[++opn];
+  const char *read_file_01 = argv[opn];
   const char *read_file_02;
   if(!opt.is_SE) {
     read_file_02 = argv[++opn];
