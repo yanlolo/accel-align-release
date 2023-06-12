@@ -378,7 +378,7 @@ void AccAlign::cpu_root_fn(tbb::concurrent_bounded_queue<ReadCnt> *inputQ,
     nreads = std::get<2>(cpu_readcnt);
     total += nreads;
     //IndexParameters indexParameters = std::get<3>(cpu_readcnt);
-    StrobemerIndex index = std::get<3>(cpu_readcnt);
+    StrobemerIndex *index = std::get<3>(cpu_readcnt);
     if (nreads == 0) {
       inputQ->push(cpu_readcnt);    // push sentinel back
       break;
