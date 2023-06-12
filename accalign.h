@@ -114,7 +114,7 @@ class AccAlign {
   void snprintf_sam(Read &R, string *s);
   void snprintf_pair_sam(Read &R, string *s, Read &R2, string *s2);
   void map_paired_read(Read &mate1, Read &mate2, int ref_id);
-  void map_read_wrapper(Read &R);
+  void map_read_wrapper(Read &R, StrobemerIndex &index, IndexParameters &indexParameters);
   void map_paired_read_wrapper(Read &mate1, Read &mate2);
   void wfa_align_read(Read &R);
   void rectify_start_pos(char *strand, Region &region, unsigned rlen, int ref_id);

@@ -1653,12 +1653,15 @@ void AccAlign::map_read(Read &R, int ref_id) {
   }
 }
 
-void AccAlign::map_read_wrapper(Read &R) {
+void AccAlign::map_read_wrapper(Read &R, StrobemerIndex &index, IndexParameters &indexParameters) {
   auto start = std::chrono::system_clock::now();
   parse(R.seq, R.fwd, R.rev, R.rev_str);
   auto end = std::chrono::system_clock::now();
   auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
   parse_time += elapsed.count();
+
+  StrobemerIndex test = index;
+  IndexParameters testParams = indexParameters;
 
   map_read(R, 0);
   R.ref_id = 0;
