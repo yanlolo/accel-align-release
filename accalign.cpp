@@ -13,6 +13,8 @@
 #include "strobealign/pc.hpp"
 #include "strobealign/aln.hpp"
 #include "strobealign/readlen.hpp"
+#include "strobealign/randstrobes.hpp"
+#include "strobealign/nam.hpp"
 #include "strobealign-integrator.hpp"
 
 using namespace tbb::flow;
@@ -807,7 +809,8 @@ void AccAlign::pghole_wrapper(Read &R,
 }
 
 void AccAlign::findCandidatePositionsUsingStrobealign(std::string_view seq, vector<Region> &fcandidate_regions, bool forward, StrobemerIndex &index, IndexParameters& parameters){
-
+  auto query_randstrobes = randstrobes_query(seq, index_parameters);
+  auto [nonrepetitive_fraction, nams] = find_nams(query_randstrobes, index);
 
 }
 
