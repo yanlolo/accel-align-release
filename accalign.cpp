@@ -808,7 +808,7 @@ void AccAlign::pghole_wrapper(Read &R,
   }
 }
 
-void AccAlign::findCandidatePositionsUsingStrobealign(std::string_view seq, vector<Region> &fcandidate_regions, bool forward, StrobemerIndex &index, IndexParameters& parameters){
+void AccAlign::findCandidatePositionsUsingStrobealign(std::string_view seq, vector<Region> &fcandidate_regions, bool forward, StrobemerIndex &index, IndexParameters& indexParameters){
   auto query_randstrobes = randstrobes_query(seq, index_parameters);
   auto [nonrepetitive_fraction, nams] = find_nams(query_randstrobes, index);
 
