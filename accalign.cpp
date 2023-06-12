@@ -348,10 +348,12 @@ class Parallel_mapper {
   Read *all_reads1;
   Read *all_reads2;
   AccAlign *acc_obj;
+  StrobemerIndex *index;
+  IndexParameters *indexParameters;
 
  public:
-  Parallel_mapper(Read *_all_reads1, Read *_all_reads2, AccAlign *_acc_obj) :
-      all_reads1(_all_reads1), all_reads2(_all_reads2), acc_obj(_acc_obj) {}
+  Parallel_mapper(Read *_all_reads1, Read *_all_reads2, AccAlign *_acc_obj, StrobemerIndex *index, IndexParameters *indexParameters) :
+      all_reads1(_all_reads1), all_reads2(_all_reads2), acc_obj(_acc_obj), index(index), indexParameters(indexParameters) {}
 
   void operator()(const tbb::blocked_range<size_t> &r) const {
     if (!all_reads2) {
@@ -386,7 +388,7 @@ void AccAlign::cpu_root_fn(tbb::concurrent_bounded_queue<ReadCnt> *inputQ,
 
     tbb::task_scheduler_init init(g_ncpus);
     tbb::parallel_for(tbb::blocked_range<size_t>(0, nreads),
-                      Parallel_mapper(std::get<0>(cpu_readcnt), std::get<1>(cpu_readcnt), this)
+                      Parallel_mapper(std::get<0>(cpu_readcnt), std::get<1>(cpu_readcnt), this, index, indexParameters)
     );
 
     outputQ->push(cpu_readcnt);
