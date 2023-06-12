@@ -3110,7 +3110,7 @@ int main(int argc, char **argv) {
     if (argv[opn][0] == '-') {
       if (argv[opn][1] == 't') {
         g_ncpus = atoi(argv[opn + 1]);
-        opn += 1;
+        opn += 2;
         option_found = true;
       } /*else if (argv[opn][1] == 'o') {
         g_out = argv[opn + 1];
