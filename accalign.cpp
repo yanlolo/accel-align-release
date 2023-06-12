@@ -822,7 +822,7 @@ void AccAlign::find_candidate_positions_using_strobealign(std::string_view seq, 
       region.qe = nam.query_e;
       region.cov = nam.n_hits;
       region.score = (int)nam.score;
-      candidate_regions.push(region);
+      candidate_regions.push_back(region);
     }
   }
 }
