@@ -3150,11 +3150,11 @@ int main(int argc, char **argv) {
   cerr << "Using " << g_ncpus << " cpus " << endl;
 
 
-  const char *reference_file = argv[2];
-  const char *read_file_01 = argv[3];
+  const char *reference_file = argv[opn];
+  const char *read_file_01 = argv[++opn];
   const char *read_file_02;
   if(!opt.is_SE) {
-    read_file_02 = argv[4];
+    read_file_02 = argv[++opn];
   }
 
   tbb::task_scheduler_init init(g_ncpus);
