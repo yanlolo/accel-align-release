@@ -816,6 +816,7 @@ void AccAlign::find_candidate_positions_using_strobealign(std::string_view seq, 
   auto [nonrepetitive_fraction, nams] = find_nams(query_randstrobes, index);
 
   Region region;
+  region.matched_intervals.reserve(1);
   for(Nam &nam: nams) {
     if(nam.is_rc == direction) {
       region.rs = nam.ref_s;
@@ -824,7 +825,8 @@ void AccAlign::find_candidate_positions_using_strobealign(std::string_view seq, 
       region.qe = nam.query_e;
       region.cov = nam.n_hits;
       region.score = (int)nam.score;
-      candidate_regions.push_back(region);
+      region.matched_intervals.push_back(Interval{nam.query_s, nam.query_e})
+      candidate_regions.push_back(move(region));
     }
   }
 }
