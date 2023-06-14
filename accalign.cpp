@@ -3112,10 +3112,10 @@ int main(int argc, char **argv) {
   IndexParameters *index_parameters_reference;
   const char *read_file_01;
   const char *read_file_02;
+  enable_strobealign_extension = opt.use_strobealign;
 
 
-
-  if(!opt.use_strobealign) {
+  if(!enable_strobealign_extension) {
 
     // Accel-Align Setup
     logger.info() << "Starting Accel-Align Setup" << std::endl;
@@ -3195,14 +3195,13 @@ int main(int argc, char **argv) {
       ksw_gen_simple_mat(5, mat, SC_MCH, SC_MIS, SC_AMBI);
     }
     logger.info() << "Finished Accel-Align Setup" << std::endl;
-  }
+  } else {
 
-  // Strobealign Setup
 
-  // accalign command: ./accalign -l 32 -t 7 -s <path-to-ref-genome>/<ref-genome>.fna <path-to-input-folder>/<input-file>.fq > <path-to-output-folder>/<output-file>.sam
-  // strobealign command: strobealign --use-index ref.fa reads.1.fastq.gz reads.2.fastq.gz
+    // Strobealign Setup
 
-  if(opt.use_strobealign) {
+    // accalign command: ./accalign -l 32 -t 7 -s <path-to-ref-genome>/<ref-genome>.fna <path-to-input-folder>/<input-file>.fq > <path-to-output-folder>/<output-file>.sam
+    // strobealign command: strobealign --use-index ref.fa reads.1.fastq.gz reads.2.fastq.gz
     while (opn < argc) {
       bool option_found = false;
       if (argv[opn][0] == '-') {
