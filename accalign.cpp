@@ -145,7 +145,7 @@ void AccAlign::print_stats() {
 //#endif
 }
 
-bool AccAlign::fastq(const char *F1, const char *F2, bool enable_gpu, IndexParameters *index_parameters, StrobemerIndex *index) {
+bool AccAlign::fastq(const char *F1, const char *F2, bool enable_gpu, IndexParameters *index_parameters, StrobemerIndex *index, mapping_params *map_params) {
 
   bool is_paired = false;
 
@@ -211,9 +211,9 @@ bool AccAlign::fastq(const char *F1, const char *F2, bool enable_gpu, IndexParam
 
     if (nreads_per_vec == batch_size) {
       if (is_paired)
-        inputQ.push(make_tuple(reads[vec_index], reads2[vec_index], batch_size, index, index_parameters));
+        inputQ.push(make_tuple(reads[vec_index], reads2[vec_index], batch_size, index, index_parameters, map_params));
       else
-        inputQ.push(make_tuple(reads[vec_index], (Read *) NULL, batch_size, index, index_parameters));
+        inputQ.push(make_tuple(reads[vec_index], (Read *) NULL, batch_size, index, index_parameters, map_params));
 
       vec_index++;
 
@@ -234,9 +234,9 @@ bool AccAlign::fastq(const char *F1, const char *F2, bool enable_gpu, IndexParam
   if (nreads_per_vec && vec_index < vec_size) {
     // the remaining reads
     if (is_paired)
-      inputQ.push(make_tuple(reads[vec_index], reads2[vec_index], nreads_per_vec, index, index_parameters));
+      inputQ.push(make_tuple(reads[vec_index], reads2[vec_index], nreads_per_vec, index, index_parameters, map_params));
     else
-      inputQ.push(make_tuple(reads[vec_index], (Read *) NULL, nreads_per_vec, index, index_parameters));
+      inputQ.push(make_tuple(reads[vec_index], (Read *) NULL, nreads_per_vec, index, index_parameters, map_params));
 
     total_nreads += nreads_per_vec;
   } else {
@@ -265,7 +265,7 @@ bool AccAlign::fastq(const char *F1, const char *F2, bool enable_gpu, IndexParam
       ++nreads_per_vec;
 
       if (nreads_per_vec == batch_size) {
-        inputQ.push(make_tuple(std::get<0>(cur_vec), std::get<1>(cur_vec), batch_size, index, index_parameters));
+        inputQ.push(make_tuple(std::get<0>(cur_vec), std::get<1>(cur_vec), batch_size, index, index_parameters, map_params));
         dataQ.pop(cur_vec);
         total_nreads += nreads_per_vec;
         nreads_per_vec = 0;
@@ -275,7 +275,7 @@ bool AccAlign::fastq(const char *F1, const char *F2, bool enable_gpu, IndexParam
     // the remaining reads
     if (nreads_per_vec) {
       total_nreads += nreads_per_vec;
-      inputQ.push(make_tuple(std::get<0>(cur_vec), std::get<1>(cur_vec), nreads_per_vec, index, index_parameters));
+      inputQ.push(make_tuple(std::get<0>(cur_vec), std::get<1>(cur_vec), nreads_per_vec, index, index_parameters, map_params));
     }
   }
 
@@ -291,7 +291,7 @@ bool AccAlign::fastq(const char *F1, const char *F2, bool enable_gpu, IndexParam
   cerr << "done reading " << total_nreads << " reads from fastq file " << F1 << ", " << F2 << " in " <<
        input_io_time / 1000000.0 << " secs\n";
 
-  ReadCnt sentinel = make_tuple((Read *) NULL, (Read *) NULL, 0, index, index_parameters);
+  ReadCnt sentinel = make_tuple((Read *) NULL, (Read *) NULL, 0, NULL, NULL, NULL);
   inputQ.push(sentinel);
 
   int size = vec_index < vec_size ? vec_index : vec_size;
@@ -352,15 +352,16 @@ class Parallel_mapper {
   AccAlign *acc_obj;
   StrobemerIndex *index;
   IndexParameters *indexParameters;
+  mapping_params *map_params;
 
  public:
-  Parallel_mapper(Read *_all_reads1, Read *_all_reads2, AccAlign *_acc_obj, StrobemerIndex *index, IndexParameters *indexParameters) :
-      all_reads1(_all_reads1), all_reads2(_all_reads2), acc_obj(_acc_obj), index(index), indexParameters(indexParameters) {}
+  Parallel_mapper(Read *_all_reads1, Read *_all_reads2, AccAlign *_acc_obj, StrobemerIndex *index, IndexParameters *indexParameters, mapping_params *map_params) :
+      all_reads1(_all_reads1), all_reads2(_all_reads2), acc_obj(_acc_obj), index(index), indexParameters(indexParameters), mapping_params(map_params) {}
 
   void operator()(const tbb::blocked_range<size_t> &r) const {
     if (!all_reads2) {
       for (size_t i = r.begin(); i != r.end(); ++i) {
-        acc_obj->map_read_wrapper(*(all_reads1 + i), index, indexParameters);
+        acc_obj->map_read_wrapper(*(all_reads1 + i), index, indexParameters, map_params);
       }
     } else {
       for (size_t i = r.begin(); i != r.end(); ++i) {
@@ -383,6 +384,7 @@ void AccAlign::cpu_root_fn(tbb::concurrent_bounded_queue<ReadCnt> *inputQ,
     total += nreads;
     StrobemerIndex *index = std::get<3>(cpu_readcnt);
     IndexParameters *indexParameters = std::get<4>(cpu_readcnt);
+    mapping_params *map_params = std::get<5>(cpu_readcnt);
     if (nreads == 0) {
       inputQ->push(cpu_readcnt);    // push sentinel back
       break;
@@ -390,7 +392,7 @@ void AccAlign::cpu_root_fn(tbb::concurrent_bounded_queue<ReadCnt> *inputQ,
 
     tbb::task_scheduler_init init(g_ncpus);
     tbb::parallel_for(tbb::blocked_range<size_t>(0, nreads),
-                      Parallel_mapper(std::get<0>(cpu_readcnt), std::get<1>(cpu_readcnt), this, index, indexParameters)
+                      Parallel_mapper(std::get<0>(cpu_readcnt), std::get<1>(cpu_readcnt), this, index, indexParameters, map_paramsm)
     );
 
     outputQ->push(cpu_readcnt);
@@ -740,14 +742,15 @@ void AccAlign::pghole_wrapper(Read &R,
                               unsigned &rbest,
                               int ref_id,
                               StrobemerIndex &index,
-                              IndexParameters &index_parameters) {
+                              IndexParameters &index_parameters,
+                              mapping_params &map_params) {
   size_t rlen = strlen(R.seq);
   int err_threshold = 2;
 
   // Retrieve Candidate Regions using Strobealign index
   if(enable_strobealign_extension) {
-    find_candidate_positions_using_strobealign(std::string(R.seq), fcandidate_regions, false, index, index_parameters);
-    find_candidate_positions_using_strobealign(std::string(R.seq), rcandidate_regions, true, index, index_parameters);
+    find_candidate_positions_using_strobealign(std::string(R.seq), fcandidate_regions, false, index, index_parameters, map_params);
+    find_candidate_positions_using_strobealign(std::string(R.seq), rcandidate_regions, true, index, index_parameters, map_params);
     return;
   }
 
@@ -813,12 +816,12 @@ void AccAlign::pghole_wrapper(Read &R,
 }
 
 // @param direction: "false", if forward strang, "true" if reverse strang
-void AccAlign::find_candidate_positions_using_strobealign(std::string_view seq, vector<Region> &candidate_regions, bool direction, StrobemerIndex &index, IndexParameters& index_parameters){
+void AccAlign::find_candidate_positions_using_strobealign(std::string_view seq, vector<Region> &candidate_regions, bool direction, StrobemerIndex &index, IndexParameters &index_parameters, mapping_params &map_params){
   auto query_randstrobes = randstrobes_query(seq, index_parameters);
   auto [nonrepetitive_fraction, nams] = find_nams(query_randstrobes, index);
 
   if (nams.empty() || nonrepetitive_fraction < 0.7) {
-    nams = find_nams_rescue(query_randstrobes, index, map_param.rescue_cutoff);
+    nams = find_nams_rescue(query_randstrobes, index, map_params.rescue_cutoff);
   }
 
   Region region;
@@ -1584,7 +1587,7 @@ int AccAlign::get_mapq(int best, int secBest) {
   return mapq;
 }
 
-void AccAlign::map_read(Read &R, int ref_id, StrobemerIndex &index, IndexParameters &index_parameters) {
+void AccAlign::map_read(Read &R, int ref_id, StrobemerIndex &index, IndexParameters &index_parameters, mapping_params &map_params) {
 
   auto start = std::chrono::system_clock::now();
   vector<Region> fcandidate_regions, rcandidate_regions;
@@ -1594,7 +1597,7 @@ void AccAlign::map_read(Read &R, int ref_id, StrobemerIndex &index, IndexParamet
   // XXX: On experimentation, it was found that using pigeonhole filtering
   // produces wrong results and invalid mappings when errors are too large.
   unsigned fbest = 0, rbest = 0;
-  pghole_wrapper(R, fcandidate_regions, rcandidate_regions, fbest, rbest, ref_id, index, index_parameters);
+  pghole_wrapper(R, fcandidate_regions, rcandidate_regions, fbest, rbest, ref_id, index, index_parameters, map_params);
   unsigned nfregions = fcandidate_regions.size();
   unsigned nrregions = rcandidate_regions.size();
   auto end = std::chrono::system_clock::now();
@@ -1692,18 +1695,18 @@ void AccAlign::map_read(Read &R, int ref_id, StrobemerIndex &index, IndexParamet
   }
 }
 
-void AccAlign::map_read_wrapper(Read &R, StrobemerIndex *index, IndexParameters *index_parameters) {
+void AccAlign::map_read_wrapper(Read &R, StrobemerIndex *index, IndexParameters *index_parameters, mapping_params *map_params) {
   auto start = std::chrono::system_clock::now();
   parse(R.seq, R.fwd, R.rev, R.rev_str);
   auto end = std::chrono::system_clock::now();
   auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
   parse_time += elapsed.count();
 
-  map_read(R, 0, *index, *index_parameters);
+  map_read(R, 0, *index, *index_parameters, *map_params);
   R.ref_id = 0;
 
   if (enable_bs){
-    map_read(R, 1, *index, *index_parameters);
+    map_read(R, 1, *index, *index_parameters, *map_params);
     if (R.best > R.best_optional){
       R.strand = R.strand_optional;
       R.best_region = R.best_region_optional;
@@ -1818,8 +1821,8 @@ void AccAlign::map_paired_read(Read &mate1, Read &mate2, int ref_id) {
   seeding_time += elapsed.count();
 
   if (!has_f1r2 && !has_r1f2) {
-    map_read_wrapper(mate1, NULL, NULL);
-    map_read_wrapper(mate2, NULL, NULL);
+    map_read_wrapper(mate1, NULL, NULL, NULL);
+    map_read_wrapper(mate2, NULL, NULL, NULL);
     if (mate1.strand == '*' && mate2.strand == '*')
       return;
     else if ((mate1.strand != '*' && mate2.strand != '*' && mate1.best_region.embed_dist < mate2.best_region.embed_dist)
@@ -2869,7 +2872,7 @@ struct tbb_map {
   tbb_map(AccAlign *obj) : accalign(obj) {}
 
   Read *operator()(Read *r) {
-    accalign->map_read_wrapper(*r, NULL, NULL);
+    accalign->map_read_wrapper(*r, NULL, NULL, NULL);
     return r;
   }
 
@@ -3114,6 +3117,7 @@ int main(int argc, char **argv) {
   const char *reference_file;
   StrobemerIndex *index_reference;
   IndexParameters *index_parameters_reference;
+  mapping_params map_params;
   const char *read_file_01;
   const char *read_file_02;
   enable_strobealign_extension = opt.use_strobealign;
@@ -3266,17 +3270,17 @@ int main(int argc, char **argv) {
     aln_params.gap_extend = opt.E;
     aln_params.end_bonus = opt.end_bonus;
 
-    mapping_params map_param;
-    map_param.r = opt.r;
-    map_param.max_secondary = opt.max_secondary;
-    map_param.dropoff_threshold = opt.dropoff_threshold;
-    map_param.R = opt.R;
-    map_param.maxTries = opt.maxTries;
-    map_param.is_sam_out = opt.is_sam_out;
-    map_param.cigar_eqx = opt.cigar_eqx;
-    map_param.output_unmapped = opt.output_unmapped;
 
-    log_parameters(index_parameters, map_param, aln_params);
+    map_params.r = opt.r;
+    map_params.max_secondary = opt.max_secondary;
+    map_params.dropoff_threshold = opt.dropoff_threshold;
+    map_params.R = opt.R;
+    map_params.maxTries = opt.maxTries;
+    map_params.is_sam_out = opt.is_sam_out;
+    map_params.cigar_eqx = opt.cigar_eqx;
+    map_params.output_unmapped = opt.output_unmapped;
+
+    log_parameters(index_parameters, map_params, aln_params);
     logger.debug() << "Threads: " << opt.n_threads << std::endl;
 
 
@@ -3327,7 +3331,7 @@ int main(int argc, char **argv) {
   AccAlign f(r);
   f.open_output(g_out);
   if (opt.is_SE) {
-    f.fastq(read_file_01, "\0", false, index_parameters_reference, index_reference);
+    f.fastq(read_file_01, "\0", false, index_parameters_reference, index_reference, &map_params);
   } else if (opn == argc - 2) {
     f.tbb_fastq(read_file_01, read_file_02);
   } else {

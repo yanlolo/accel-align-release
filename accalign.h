@@ -33,7 +33,7 @@ class AccAlign {
                      vector<Region> &rregion, unsigned &fbest, unsigned &fnext, unsigned &rbest,
                      unsigned &rnext, int &best_threshold, int &next_threshold, int ref_id);
   void pghole_wrapper(Read &R, vector<Region> &fcandidate_regions, vector<Region> &rcandidate_regions,
-                      unsigned &fbest, unsigned &rbest, int ref_id, StrobemerIndex &index, IndexParameters &indexParameters);
+                      unsigned &fbest, unsigned &rbest, int ref_id, StrobemerIndex &index, IndexParameters &indexParameters, mapping_params &map_params);
   void pigeonhole_query_topcov(char *Q, size_t rlen, vector<Region> &candidate_regions, char S, int err_threshold,
                                unsigned kmer_step, unsigned max_occ, unsigned &best, unsigned ori_slide, int ref_id);
   void pghole_wrapper_mates(Read &R, vector<Region> &fcandidate_regions, vector<Region> &rcandidate_regions,
@@ -73,7 +73,7 @@ class AccAlign {
                     unsigned &fbest, unsigned &rbest);
   inline uint32_t get_global_pos(uint64_t cr, int ref_id);
   inline uint64_t normalize_pos(uint64_t cr, uint32_t q_pos, int k, int rlen);
-  void find_candidate_positions_using_strobealign(std::string_view seq, vector<Region> &fcandidate_regions, bool direction, StrobemerIndex &index, IndexParameters& index_parameters);
+  void find_candidate_positions_using_strobealign(std::string_view seq, vector<Region> &fcandidate_regions, bool direction, StrobemerIndex &index, IndexParameters& index_parameters, mapping_params &map_params);
 
  public:
   Reference **refs;
@@ -107,15 +107,15 @@ class AccAlign {
 
   void open_output(std::string &out_file);
   void close_output();
-  bool fastq(const char *F1, const char *F2, bool enable_gpu, IndexParameters *index_parameters, StrobemerIndex *index);
+  bool fastq(const char *F1, const char *F2, bool enable_gpu, IndexParameters *index_parameters, StrobemerIndex *index, mapping_params *map_params);
   void print_stats();
-  void map_read(Read &R, int ref_id, StrobemerIndex &index, IndexParameters &indexParameters);
+  void map_read(Read &R, int ref_id, StrobemerIndex &index, IndexParameters &indexParameters, mapping_params &map_params);
   void align_read(Read &R);
   void out_sam(string *sam);
   void snprintf_sam(Read &R, string *s);
   void snprintf_pair_sam(Read &R, string *s, Read &R2, string *s2);
   void map_paired_read(Read &mate1, Read &mate2, int ref_id);
-  void map_read_wrapper(Read &R, StrobemerIndex *index, IndexParameters *indexParameters);
+  void map_read_wrapper(Read &R, StrobemerIndex *index, IndexParameters *indexParameters, mapping_params *map_params);
   void map_paired_read_wrapper(Read &mate1, Read &mate2);
   void wfa_align_read(Read &R);
   void rectify_start_pos(char *strand, Region &region, unsigned rlen, int ref_id);
