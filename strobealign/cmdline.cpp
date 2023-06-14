@@ -7,7 +7,7 @@ class Version {};
 
 CommandLineOptions parse_command_line_arguments(int argc, char **argv) {
 
-    args::ArgumentParser parser("accel-align with strobealign v0.1");
+    args::ArgumentParser parser("Accel-Align with Support for Strobealign Extension");
     parser.helpParams.showTerminator = false;
     parser.helpParams.helpindent = 20;
     parser.helpParams.width = 90;
@@ -36,6 +36,7 @@ CommandLineOptions parse_command_line_arguments(int argc, char **argv) {
     args::ValueFlag<std::string> index_statistics(parser, "PATH", "Print statistics of indexing to PATH", {"index-statistics"});
     args::Flag i(parser, "index", "Do not map reads; only generate the strobemer index and write it to disk. If read files are provided, they are used to estimate read length", {"create-index", 'i'});
     args::Flag use_index(parser, "use_index", "Use a pre-generated index previously written with --create-index.", { "use-index" });
+    args::Flag use_strobealign(parser, "use_strobealign", "Use Strobealign mode", { "strobe-mode" });
 
     args::Group seeding_group(parser, "Seeding:");
     auto seeding = SeedingArguments{parser};
@@ -97,6 +98,7 @@ CommandLineOptions parse_command_line_arguments(int argc, char **argv) {
     if (index_statistics) { opt.logfile_name = args::get(index_statistics); }
     if (i) { opt.only_gen_index = true; }
     if (use_index) { opt.use_index = true; }
+    if (use_strobealign) {opt.use_strobealign = true;}
 
     // Seeding
     if (seeding.r) { opt.r = args::get(seeding.r); opt.r_set = true; }

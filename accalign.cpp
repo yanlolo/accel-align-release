@@ -28,7 +28,7 @@ string g_out, g_batch_file, g_embed_file;
 char rcsymbol[6] = "TGCAN";
 uint8_t code[256];
 bool enable_extension = true, enable_wfa_extension = false, extend_all = false,
-enable_minimizer = false, enable_bs = false;
+enable_minimizer = false, enable_bs = false, enable_strobealign_extension = false;
 
 
 int g_ncpus = 1;
@@ -145,7 +145,7 @@ void AccAlign::print_stats() {
 //#endif
 }
 
-bool AccAlign::fastq(const char *F1, const char *F2, bool enable_gpu, IndexParameters& index_parameters, StrobemerIndex& index) {
+bool AccAlign::fastq(const char *F1, const char *F2, bool enable_gpu, IndexParameters *index_parameters, StrobemerIndex *index) {
 
   bool is_paired = false;
 
@@ -211,9 +211,9 @@ bool AccAlign::fastq(const char *F1, const char *F2, bool enable_gpu, IndexParam
 
     if (nreads_per_vec == batch_size) {
       if (is_paired)
-        inputQ.push(make_tuple(reads[vec_index], reads2[vec_index], batch_size, &index, &index_parameters));
+        inputQ.push(make_tuple(reads[vec_index], reads2[vec_index], batch_size, index, index_parameters));
       else
-        inputQ.push(make_tuple(reads[vec_index], (Read *) NULL, batch_size, &index, &index_parameters));
+        inputQ.push(make_tuple(reads[vec_index], (Read *) NULL, batch_size, index, index_parameters));
 
       vec_index++;
 
@@ -234,9 +234,9 @@ bool AccAlign::fastq(const char *F1, const char *F2, bool enable_gpu, IndexParam
   if (nreads_per_vec && vec_index < vec_size) {
     // the remaining reads
     if (is_paired)
-      inputQ.push(make_tuple(reads[vec_index], reads2[vec_index], nreads_per_vec, &index, &index_parameters));
+      inputQ.push(make_tuple(reads[vec_index], reads2[vec_index], nreads_per_vec, index, index_parameters));
     else
-      inputQ.push(make_tuple(reads[vec_index], (Read *) NULL, nreads_per_vec, &index, &index_parameters));
+      inputQ.push(make_tuple(reads[vec_index], (Read *) NULL, nreads_per_vec, index, index_parameters));
 
     total_nreads += nreads_per_vec;
   } else {
@@ -265,7 +265,7 @@ bool AccAlign::fastq(const char *F1, const char *F2, bool enable_gpu, IndexParam
       ++nreads_per_vec;
 
       if (nreads_per_vec == batch_size) {
-        inputQ.push(make_tuple(std::get<0>(cur_vec), std::get<1>(cur_vec), batch_size, &index, &index_parameters));
+        inputQ.push(make_tuple(std::get<0>(cur_vec), std::get<1>(cur_vec), batch_size, index, index_parameters));
         dataQ.pop(cur_vec);
         total_nreads += nreads_per_vec;
         nreads_per_vec = 0;
@@ -275,7 +275,7 @@ bool AccAlign::fastq(const char *F1, const char *F2, bool enable_gpu, IndexParam
     // the remaining reads
     if (nreads_per_vec) {
       total_nreads += nreads_per_vec;
-      inputQ.push(make_tuple(std::get<0>(cur_vec), std::get<1>(cur_vec), nreads_per_vec, &index, &index_parameters));
+      inputQ.push(make_tuple(std::get<0>(cur_vec), std::get<1>(cur_vec), nreads_per_vec, index, index_parameters));
     }
   }
 
@@ -291,7 +291,7 @@ bool AccAlign::fastq(const char *F1, const char *F2, bool enable_gpu, IndexParam
   cerr << "done reading " << total_nreads << " reads from fastq file " << F1 << ", " << F2 << " in " <<
        input_io_time / 1000000.0 << " secs\n";
 
-  ReadCnt sentinel = make_tuple((Read *) NULL, (Read *) NULL, 0, &index, &index_parameters);
+  ReadCnt sentinel = make_tuple((Read *) NULL, (Read *) NULL, 0, index, index_parameters);
   inputQ.push(sentinel);
 
   int size = vec_index < vec_size ? vec_index : vec_size;
@@ -3091,194 +3091,235 @@ std::string sam_header(const References& references, const std::string& read_gro
 
 int main(int argc, char **argv) {
 
-
   auto opt = parse_command_line_arguments(argc, argv);
   logger.set_level(opt.verbose ? LOG_DEBUG : LOG_INFO);
   logger.info() << std::setprecision(2) << std::fixed;
 
-  // Accel-Align Setup
-  logger.info() << "Starting Accel-Align Setup" << std::endl;
+
+  // General Setup
+  logger.info() << "Starting General Setup" << std::endl;
   if (argc < 3) {
-    print_usage();
+    logger.error() << "Please provide a valid command." << std::endl;
     return 0;
   }
-
   int opn = 1;
   int kmer_temp = 0;
-  const char *reference_file;
-  while (opn < argc) {
-    bool option_found = false;
-    if (argv[opn][0] == '-') {
-      if (argv[opn][1] == 't') {
-        g_ncpus = atoi(argv[opn + 1]);
-        opn += 2;
-        option_found = true;
-      } /*else if (argv[opn][1] == 'o') {
-        g_out = argv[opn + 1];
-        opn += 2;
-        option_found = true;
-      } else if (argv[opn][1] == 'e') {
-        g_embed_file = argv[opn + 1];
-        opn += 2;
-        option_found = true;
-      } else if (argv[opn][1] == 'b') {
-        g_batch_file = argv[opn + 1];
-        opn += 2;
-        option_found = true;
-      } else if (argv[opn][1] == 'p') {
-        pairdis = atoi(argv[opn + 1]);
-        opn += 2;
-        option_found = true;
-      } else if (argv[opn][1] == 's') {
-        enable_bs = true;
-        opn += 1;
-        option_found = true;
-      } */
-      else if (std::string(argv[opn]) == "--use-index") {
-        reference_file = argv[++opn];
-        opn += 1;
-        option_found = true;
-      } else {
-        print_usage();
-      }
-    }
-    if (!option_found)
-      break;
-  }
-  if (kmer_temp != 0)
-    kmer_len = kmer_temp;
-  mask = kmer_len == 32 ? ~0 : (1ULL << (kmer_len * 2)) - 1;
-
-  cerr << "Using " << g_ncpus << " cpus " << endl;
-
-  if(!reference_file) {
-    cerr << "Please provide a valid reference file" << endl;
-    return 1;
-  }
-  const char *read_file_01 = argv[opn];
-  const char *read_file_02;
-  if(!opt.is_SE) {
-    read_file_02 = argv[++opn];
-  }
-
-  tbb::task_scheduler_init init(g_ncpus);
-  make_code();
-
-  // load reference once
   Reference **r = new Reference*[2];
+  const char *reference_file;
+  StrobemerIndex *index_reference;
+  IndexParameters *index_parameters_reference;
+  const char *read_file_01;
+  const char *read_file_02;
 
-  if (enable_bs){
-    r[0] = new Reference(argv[opn], enable_minimizer, 'c');
-    r[1] = new Reference(argv[opn++], enable_minimizer, 'g');
-  } else {
-    r[0] = new Reference(reference_file, enable_minimizer, ' ');
+
+
+  if(!opt.use_strobealign) {
+
+    // Accel-Align Setup
+    logger.info() << "Starting Accel-Align Setup" << std::endl;
+
+    while (opn < argc) {
+      bool option_found = false;
+      if (argv[opn][0] == '-') {
+        if (argv[opn][1] == 't') {
+          g_ncpus = atoi(argv[opn + 1]);
+          opn += 2;
+          option_found = true;
+        } else if (argv[opn][1] == 'l') {
+          kmer_temp = atoi(argv[opn + 1]);
+          opn += 2;
+          option_found = true;
+        } else if (argv[opn][1] == 'o') {
+          g_out = argv[opn + 1];
+          opn += 2;
+          option_found = true;
+        } else if (argv[opn][1] == 'e') {
+          g_embed_file = argv[opn + 1];
+          opn += 2;
+          option_found = true;
+        } else if (argv[opn][1] == 'b') {
+          g_batch_file = argv[opn + 1];
+          opn += 2;
+          option_found = true;
+        } else if (argv[opn][1] == 'p') {
+          pairdis = atoi(argv[opn + 1]);
+          opn += 2;
+          option_found = true;
+        } else if (argv[opn][1] == 'x') {
+          enable_extension = false;
+          opn += 1;
+          option_found = true;
+        } else if (argv[opn][1] == 'w') {
+          enable_wfa_extension = true;
+          opn += 1;
+          option_found = true;
+        } else if (argv[opn][1] == 'd') {
+          extend_all = true;
+          opn += 1;
+          option_found = true;
+        } else if (argv[opn][1] == 'm') {
+          enable_minimizer = true;
+          opn += 1;
+          option_found = true;
+        } else if (argv[opn][1] == 's') {
+          enable_bs = true;
+          opn += 1;
+          option_found = true;
+        } else {
+          print_usage();
+        }
+      }
+      if (!option_found)
+        break;
+    }
+    if (kmer_temp != 0)
+      kmer_len = kmer_temp;
+    mask = kmer_len == 32 ? ~0 : (1ULL << (kmer_len * 2)) - 1;
+
+    cerr << "Using kmer length " << kmer_len << " and step size " << kmer_step << endl;
+
+    tbb::task_scheduler_init init(g_ncpus);
+    make_code();
+
+    // load reference once
+    if (enable_bs){
+      r[0] = new Reference(argv[opn], enable_minimizer, 'c', true);
+      r[1] = new Reference(argv[opn++], enable_minimizer, 'g', true);
+    } else {
+      r[0] = new Reference(argv[opn++], enable_minimizer, ' ', true);
+    }
+
+    if (enable_extension && !enable_wfa_extension) {
+      ksw_gen_simple_mat(5, mat, SC_MCH, SC_MIS, SC_AMBI);
+    }
+    logger.info() << "Finished Accel-Align Setup" << std::endl;
   }
-
-  if (enable_extension && !enable_wfa_extension)
-    ksw_gen_simple_mat(5, mat, SC_MCH, SC_MIS, SC_AMBI);
-
-  size_t total_begin = time(NULL);
-
-  auto start = std::chrono::system_clock::now();
-
-  AccAlign f(r);
-  f.open_output(g_out);
-
-
-  logger.info() << "Finished Accel-Align Setup" << std::endl;
-  logger.info() << "Starting Strobealign Setup" << std::endl;
 
   // Strobealign Setup
 
   // accalign command: ./accalign -l 32 -t 7 -s <path-to-ref-genome>/<ref-genome>.fna <path-to-input-folder>/<input-file>.fq > <path-to-output-folder>/<output-file>.sam
   // strobealign command: strobealign --use-index ref.fa reads.1.fastq.gz reads.2.fastq.gz
 
+  if(opt.use_strobealign) {
+    while (opn < argc) {
+      bool option_found = false;
+      if (argv[opn][0] == '-') {
+        if (argv[opn][1] == 't') {
+          g_ncpus = atoi(argv[opn + 1]);
+          opn += 2;
+          option_found = true;
+        } else if (std::string(argv[opn]) == "--use-index") {
+          reference_file = argv[++opn];
+          opn += 1;
+          option_found = true;
+        } else {
+          print_usage();
+        }
+      }
+      if (!option_found)
+        break;
+    }
+    logger.info() << "Starting Strobealign Setup" << std::endl;
+
+    // Load accalign Reference data structure without acalign index
+    if(!reference_file) {
+      logger.error() << "Please provide a valid reference file" << std::endl;
+      return 1;
+    }
+    r[0] = new Reference(reference_file, enable_minimizer, ' ', false);
+
+    if (opt.c >= 64 || opt.c <= 0) {
+      throw BadParameter("c must be greater than 0 and less than 64");
+    }
+
+    InputBuffer input_buffer = get_input_buffer(opt);
+    if (!opt.r_set && !opt.reads_filename1.empty()) {
+      opt.r = estimate_read_length(input_buffer);
+      logger.info() << "Estimated read length: " << opt.r << " bp\n";
+    }
+    input_buffer.rewind_reset();
+    IndexParameters index_parameters = IndexParameters::from_read_length(
+            opt.r,
+            opt.k_set ? opt.k : IndexParameters::DEFAULT,
+            opt.s_set ? opt.s : IndexParameters::DEFAULT,
+            opt.l_set ? opt.l : IndexParameters::DEFAULT,
+            opt.u_set ? opt.u : IndexParameters::DEFAULT,
+            opt.c_set ? opt.c : IndexParameters::DEFAULT,
+            opt.max_seed_len_set ? opt.max_seed_len : IndexParameters::DEFAULT
+    );
+    index_parameters_reference = &index_parameters;
+    logger.debug() << index_parameters << '\n';
+    alignment_params aln_params;
+    aln_params.match = opt.A;
+    aln_params.mismatch = opt.B;
+    aln_params.gap_open = opt.O;
+    aln_params.gap_extend = opt.E;
+    aln_params.end_bonus = opt.end_bonus;
+
+    mapping_params map_param;
+    map_param.r = opt.r;
+    map_param.max_secondary = opt.max_secondary;
+    map_param.dropoff_threshold = opt.dropoff_threshold;
+    map_param.R = opt.R;
+    map_param.maxTries = opt.maxTries;
+    map_param.is_sam_out = opt.is_sam_out;
+    map_param.cigar_eqx = opt.cigar_eqx;
+    map_param.output_unmapped = opt.output_unmapped;
+
+    log_parameters(index_parameters, map_param, aln_params);
+    logger.debug() << "Threads: " << opt.n_threads << std::endl;
 
 
+    // Retrieve Strobealign index
+    References references;
+    Timer read_refs_timer;
+    references = References::from_fasta(opt.ref_filename);
+    logger.info() << "Time reading reference: " << read_refs_timer.elapsed() << " s\n";
 
-  if (opt.c >= 64 || opt.c <= 0) {
-    throw BadParameter("c must be greater than 0 and less than 64");
+    logger.info() << "Reference size: " << references.total_length() / 1E6 << " Mbp ("
+                  << references.size() << " contig" << (references.size() == 1 ? "" : "s")
+                  << "; largest: "
+                  << (*std::max_element(references.lengths.begin(), references.lengths.end()) / 1E6) << " Mbp)\n";
+    if (references.total_length() == 0) {
+      throw InvalidFasta("No reference sequences found");
+    }
+
+    index_reference = new StrobemerIndex(references, index_parameters);
+
+    // Read Strobealign index from the provided file
+    Timer read_index_timer;
+    std::string sti_path = opt.ref_filename + index_parameters.filename_extension();
+    logger.info() << "Reading index from " << sti_path << '\n';
+    index_reference->read(sti_path);
+    logger.info() << "Total time reading index: " << read_index_timer.elapsed() << " s\n";
+
+
+    logger.info() << "Running in " << (opt.is_SE ? "single-end" : "paired-end") << " mode" << std::endl;
+    logger.info() << "Finished Strobealign Setup" << std::endl;
   }
 
-  InputBuffer input_buffer = get_input_buffer(opt);
-  if (!opt.r_set && !opt.reads_filename1.empty()) {
-    opt.r = estimate_read_length(input_buffer);
-    logger.info() << "Estimated read length: " << opt.r << " bp\n";
-  }
-  input_buffer.rewind_reset();
-  IndexParameters index_parameters = IndexParameters::from_read_length(
-          opt.r,
-          opt.k_set ? opt.k : IndexParameters::DEFAULT,
-          opt.s_set ? opt.s : IndexParameters::DEFAULT,
-          opt.l_set ? opt.l : IndexParameters::DEFAULT,
-          opt.u_set ? opt.u : IndexParameters::DEFAULT,
-          opt.c_set ? opt.c : IndexParameters::DEFAULT,
-          opt.max_seed_len_set ? opt.max_seed_len : IndexParameters::DEFAULT
-  );
-  logger.debug() << index_parameters << '\n';
-  alignment_params aln_params;
-  aln_params.match = opt.A;
-  aln_params.mismatch = opt.B;
-  aln_params.gap_open = opt.O;
-  aln_params.gap_extend = opt.E;
-  aln_params.end_bonus = opt.end_bonus;
-
-  mapping_params map_param;
-  map_param.r = opt.r;
-  map_param.max_secondary = opt.max_secondary;
-  map_param.dropoff_threshold = opt.dropoff_threshold;
-  map_param.R = opt.R;
-  map_param.maxTries = opt.maxTries;
-  map_param.is_sam_out = opt.is_sam_out;
-  map_param.cigar_eqx = opt.cigar_eqx;
-  map_param.output_unmapped = opt.output_unmapped;
-
-  log_parameters(index_parameters, map_param, aln_params);
-  logger.debug() << "Threads: " << opt.n_threads << std::endl;
 
 
-  // Retrieve Strobealign index
-  References references;
-  Timer read_refs_timer;
-  references = References::from_fasta(opt.ref_filename);
-  logger.info() << "Time reading reference: " << read_refs_timer.elapsed() << " s\n";
+  logger.info() << "Using " << g_ncpus << " cpus " << std::endl;
+  tbb::task_scheduler_init init(g_ncpus);
+  make_code();
+  size_t total_begin = time(NULL);
 
-  logger.info() << "Reference size: " << references.total_length() / 1E6 << " Mbp ("
-                << references.size() << " contig" << (references.size() == 1 ? "" : "s")
-                << "; largest: "
-                << (*std::max_element(references.lengths.begin(), references.lengths.end()) / 1E6) << " Mbp)\n";
-  if (references.total_length() == 0) {
-    throw InvalidFasta("No reference sequences found");
+  auto start = std::chrono::system_clock::now();
+
+
+  read_file_01 = argv[opn];
+  if(!opt.is_SE) {
+    read_file_02 = argv[++opn];
   }
 
-  StrobemerIndex index(references, index_parameters);
-
-  // Read the index from the provided file
-  Timer read_index_timer;
-  std::string sti_path = opt.ref_filename + index_parameters.filename_extension();
-  logger.info() << "Reading index from " << sti_path << '\n';
-  index.read(sti_path);
-  logger.info() << "Total time reading index: " << read_index_timer.elapsed() << " s\n";
-
-
-  logger.info() << "Running in " << (opt.is_SE ? "single-end" : "paired-end") << " mode" << std::endl;
-  logger.info() << "Finished Strobealign Setup" << std::endl;
-
-
-
-
-
-
-
-
-
-
+  // Run Accel-Align using the provided mode
+  AccAlign f(r);
+  f.open_output(g_out);
   if (opt.is_SE) {
-    f.fastq(read_file_01, "\0", false, index_parameters, index);
-//    f.tbb_fastq(av[opn], "\0");
+    f.fastq(read_file_01, "\0", false, index_parameters_reference, index_reference);
   } else if (opn == argc - 2) {
-//    f.fastq(av[opn], av[opn + 1], false);
-    f.tbb_fastq(argv[opn], argv[opn + 1]);
+    f.tbb_fastq(read_file_01, read_file_02);
   } else {
     print_usage();
     return 0;

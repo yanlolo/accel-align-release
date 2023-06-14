@@ -65,9 +65,10 @@ class Reference {
   uint32_t nposv, nkeyv;
   mm_idx_t *mi;
   bool enable_minimizer;
+  bool load_accalign_index;
   char mode; // 'c' c-> t; 'g' g->a; ' ' original
 
-  Reference(const char *F, bool _enable_minimizer, char mode);
+  Reference(const char *F, bool _enable_minimizer, char mode, bool load_accalign_index);
 
   ~Reference();
 };

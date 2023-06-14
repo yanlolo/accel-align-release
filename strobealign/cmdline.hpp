@@ -23,6 +23,7 @@ struct CommandLineOptions {
     bool is_sam_out { true };
     bool output_unmapped { true };
     int max_secondary { 0 };
+    bool use_strobealign { false};
 
     // Seeding
     int r { 150 };
