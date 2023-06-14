@@ -2,6 +2,7 @@
 
 #include "mmpriv.h"
 #include "strobealign-integrator.hpp"
+#include "strobealign/aln.hpp"
 
 class AccAlign {
  private:

@@ -4,6 +4,7 @@
 #include "minimap.h"
 #include "strobealign-integrator.hpp"
 #include "strobealign/indexparameters.hpp"
+#include "strobealign/aln.hpp"
 
 struct Alignment {
   std::string cigar_string;
