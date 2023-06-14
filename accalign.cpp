@@ -817,6 +817,10 @@ void AccAlign::find_candidate_positions_using_strobealign(std::string_view seq, 
   auto query_randstrobes = randstrobes_query(seq, index_parameters);
   auto [nonrepetitive_fraction, nams] = find_nams(query_randstrobes, index);
 
+  if (nams.empty() || nonrepetitive_fraction < 0.7) {
+    nams = find_nams_rescue(query_randstrobes, index, map_param.rescue_cutoff);
+  }
+
   Region region;
   region.matched_intervals.reserve(1);
   for(Nam &nam: nams) {
