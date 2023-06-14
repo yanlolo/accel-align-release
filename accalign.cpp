@@ -3212,8 +3212,9 @@ int main(int argc, char **argv) {
           reference_file = argv[++opn];
           opn += 1;
           option_found = true;
-        } else {
-          print_usage();
+        } else if (std::string(argv[opn]) == "--strobe-mode") {
+          opn += 1;
+          option_found = true;
         }
       }
       if (!option_found)
