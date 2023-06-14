@@ -291,7 +291,7 @@ bool AccAlign::fastq(const char *F1, const char *F2, bool enable_gpu, IndexParam
   cerr << "done reading " << total_nreads << " reads from fastq file " << F1 << ", " << F2 << " in " <<
        input_io_time / 1000000.0 << " secs\n";
 
-  ReadCnt sentinel = make_tuple((Read *) NULL, (Read *) NULL, 0, NULL, NULL, NULL);
+  ReadCnt sentinel = make_tuple((Read *) NULL, (Read *) NULL, 0, (StrobemerIndex *) NULL, (IndexParameters *) NULL, (mapping_params *) NULL);
   inputQ.push(sentinel);
 
   int size = vec_index < vec_size ? vec_index : vec_size;
@@ -356,7 +356,7 @@ class Parallel_mapper {
 
  public:
   Parallel_mapper(Read *_all_reads1, Read *_all_reads2, AccAlign *_acc_obj, StrobemerIndex *index, IndexParameters *indexParameters, mapping_params *map_params) :
-      all_reads1(_all_reads1), all_reads2(_all_reads2), acc_obj(_acc_obj), index(index), indexParameters(indexParameters), mapping_params(map_params) {}
+      all_reads1(_all_reads1), all_reads2(_all_reads2), acc_obj(_acc_obj), index(index), indexParameters(indexParameters), map_params(map_params) {}
 
   void operator()(const tbb::blocked_range<size_t> &r) const {
     if (!all_reads2) {
@@ -392,7 +392,7 @@ void AccAlign::cpu_root_fn(tbb::concurrent_bounded_queue<ReadCnt> *inputQ,
 
     tbb::task_scheduler_init init(g_ncpus);
     tbb::parallel_for(tbb::blocked_range<size_t>(0, nreads),
-                      Parallel_mapper(std::get<0>(cpu_readcnt), std::get<1>(cpu_readcnt), this, index, indexParameters, map_paramsm)
+                      Parallel_mapper(std::get<0>(cpu_readcnt), std::get<1>(cpu_readcnt), this, index, indexParameters, map_params)
     );
 
     outputQ->push(cpu_readcnt);
