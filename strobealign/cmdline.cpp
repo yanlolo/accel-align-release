@@ -16,29 +16,7 @@ CommandLineOptions parse_command_line_arguments(int argc, char **argv) {
 
     args::HelpFlag help(parser, "help", "Print help and exit", {'h', "help"});
     args::ActionFlag version(parser, "version", "Print version and exit", {"version"}, []() { throw Version(); });
-    args::Flag use_strobealign(parser, "use_strobealign", "Use Strobealign mode", { "strobe-mode" });
 
-
-    try {
-      parser.ParseCLI(argc, argv);
-    }
-    catch (const args::Completion& e) {
-      std::cout << e.what();
-      exit(EXIT_SUCCESS);
-    }
-    catch (const args::Help&) {
-      std::cout << parser;
-      exit(EXIT_SUCCESS);
-    }
-    catch (const Version& e) {
-      std::cout << "Version 0.1" << std::endl;
-      exit(EXIT_SUCCESS);
-    }
-    catch (const args::Error& e) {
-      std::cerr << parser;
-      std::cerr << "Error: " << e.what() << std::endl;
-      exit(EXIT_FAILURE);
-    }
 
 
 
@@ -61,15 +39,16 @@ CommandLineOptions parse_command_line_arguments(int argc, char **argv) {
     args::ValueFlag<std::string> index_statistics(parser, "PATH", "Print statistics of indexing to PATH", {"index-statistics"});
     args::Flag i(parser, "index", "Do not map reads; only generate the strobemer index and write it to disk. If read files are provided, they are used to estimate read length", {"create-index", 'i'});
     args::Flag use_index(parser, "use_index", "Use a pre-generated index previously written with --create-index.", { "use-index" });
+    args::Flag use_strobealign(parser, "use_strobealign", "Use Strobealign mode", { "strobe-mode" });
 
 
     args::Group seeding_group(parser, "Seeding:");
     SeedingArguments *seedingArgumentsPointer = NULL;
 
-    if(use_strobealign){
-      auto seeding = SeedingArguments{parser};
-      seedingArgumentsPointer = &seeding;
-    }
+
+    auto seeding = SeedingArguments{parser};
+    seedingArgumentsPointer = &seeding;
+
 
     args::Group alignment(parser, "Alignment:");
     args::ValueFlag<int> A(parser, "INT", "Matching score [2]", {'A'});
