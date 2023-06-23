@@ -823,7 +823,9 @@ void AccAlign::find_candidate_positions_using_strobealign(std::string_view seq, 
   if (nams.empty() || nonrepetitive_fraction < 0.7) {
     nams = find_nams_rescue(query_randstrobes, index, map_params.rescue_cutoff);
   }
-  std::sort(nams.begin(), nams.end(), score);
+  std::sort(nams.begin(), nams.end(), [](const Nam &a, const Nam &b) -> bool {
+    return a.score > b.score;
+  });
 
   Region region;
   region.matched_intervals.reserve(1);
