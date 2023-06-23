@@ -99,7 +99,7 @@ CommandLineOptions parse_command_line_arguments(int argc, char **argv) {
     if (v) { opt.verbose = true; }
     if (no_progress) { opt.show_progress = false; }
     if (eqx) { opt.cigar_eqx = true; }
-    if (x) { opt.is_sam_out = false; }
+    //if (x) { opt.is_sam_out = false; }
     if (U) { opt.output_unmapped = false; }
     if (rgid) { opt.read_group_id = args::get(rgid); }
     if (rg) { opt.read_group_fields = args::get(rg); }
