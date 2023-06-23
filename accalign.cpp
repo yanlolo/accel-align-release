@@ -838,6 +838,11 @@ void AccAlign::find_candidate_positions_using_strobealign(std::string_view seq, 
       candidate_regions.push_back(move(region));
     }
   }
+
+  std::sort(candidate_regions.candidate_regions(), hits.end(), [](const Region& a, const Region& b) -> bool {
+                return a.score > b.score;
+            }
+  );
 }
 
 void AccAlign::merge_interval(Region &r, uint32_t last_q_pos, int32_t k) {

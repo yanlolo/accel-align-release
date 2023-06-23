@@ -16,6 +16,31 @@ CommandLineOptions parse_command_line_arguments(int argc, char **argv) {
 
     args::HelpFlag help(parser, "help", "Print help and exit", {'h', "help"});
     args::ActionFlag version(parser, "version", "Print version and exit", {"version"}, []() { throw Version(); });
+    args::Flag use_strobealign(parser, "use_strobealign", "Use Strobealign mode", { "strobe-mode" });
+
+
+    try {
+      parser.ParseCLI(argc, argv);
+    }
+    catch (const args::Completion& e) {
+      std::cout << e.what();
+      exit(EXIT_SUCCESS);
+    }
+    catch (const args::Help&) {
+      std::cout << parser;
+      exit(EXIT_SUCCESS);
+    }
+    catch (const Version& e) {
+      std::cout << "Version 0.1" << std::endl;
+      exit(EXIT_SUCCESS);
+    }
+    catch (const args::Error& e) {
+      std::cerr << parser;
+      std::cerr << "Error: " << e.what() << std::endl;
+      exit(EXIT_FAILURE);
+    }
+
+
 
     // Threading
     args::ValueFlag<int> threads(parser, "INT", "Number of threads [3]", {'t', "threads"});
@@ -36,10 +61,15 @@ CommandLineOptions parse_command_line_arguments(int argc, char **argv) {
     args::ValueFlag<std::string> index_statistics(parser, "PATH", "Print statistics of indexing to PATH", {"index-statistics"});
     args::Flag i(parser, "index", "Do not map reads; only generate the strobemer index and write it to disk. If read files are provided, they are used to estimate read length", {"create-index", 'i'});
     args::Flag use_index(parser, "use_index", "Use a pre-generated index previously written with --create-index.", { "use-index" });
-    args::Flag use_strobealign(parser, "use_strobealign", "Use Strobealign mode", { "strobe-mode" });
+
 
     args::Group seeding_group(parser, "Seeding:");
-    auto seeding = SeedingArguments{parser};
+    SeedingArguments *seedingArgumentsPointer = NULL;
+
+    if(use_strobealign){
+      auto seeding = SeedingArguments{parser};
+      seedingArgumentsPointer = &seeding;
+    }
 
     args::Group alignment(parser, "Alignment:");
     args::ValueFlag<int> A(parser, "INT", "Matching score [2]", {'A'});
@@ -101,13 +131,15 @@ CommandLineOptions parse_command_line_arguments(int argc, char **argv) {
     if (use_strobealign) {opt.use_strobealign = true;}
 
     // Seeding
-    if (seeding.r) { opt.r = args::get(seeding.r); opt.r_set = true; }
-    if (seeding.m) { opt.max_seed_len = args::get(seeding.m); opt.max_seed_len_set = true; }
-    if (seeding.k) { opt.k = args::get(seeding.k); opt.k_set = true; }
-    if (seeding.l) { opt.l = args::get(seeding.l); opt.l_set = true; }
-    if (seeding.u) { opt.u = args::get(seeding.u); opt.u_set = true; }
-    if (seeding.s) { opt.s = args::get(seeding.s); opt.s_set = true; }
-    if (seeding.c) { opt.c = args::get(seeding.c); opt.c_set = true; }
+    if(use_strobealign) {
+      if (seedingArgumentsPointer->r) { opt.r = args::get(seedingArgumentsPointer->r); opt.r_set = true; }
+      if (seedingArgumentsPointer->m) { opt.max_seed_len = args::get(seedingArgumentsPointer->m); opt.max_seed_len_set = true; }
+      if (seedingArgumentsPointer->k) { opt.k = args::get(seedingArgumentsPointer->k); opt.k_set = true; }
+      if (seedingArgumentsPointer->l) { opt.l = args::get(seedingArgumentsPointer->l); opt.l_set = true; }
+      if (seedingArgumentsPointer->u) { opt.u = args::get(seedingArgumentsPointer->u); opt.u_set = true; }
+      if (seedingArgumentsPointer->s) { opt.s = args::get(seedingArgumentsPointer->s); opt.s_set = true; }
+      if (seedingArgumentsPointer->c) { opt.c = args::get(seedingArgumentsPointer->c); opt.c_set = true; }
+    }
 
     // Alignment
     // if (n) { n = args::get(n); }
