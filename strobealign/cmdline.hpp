@@ -4,6 +4,7 @@
 #include <vector>
 #include <string>
 #include <utility>
+#include "ext/args.hxx"
 
 struct CommandLineOptions {
     int n_threads { 3 };
