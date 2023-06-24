@@ -3101,16 +3101,15 @@ std::string sam_header(const References& references, const std::string& read_gro
 
 int main(int argc, char **argv) {
 
-  bool use_strobealign = false;
   int opn = 1;
   while (opn < argc && !use_strobealign) {
     if (std::string(argv[opn]) == "--strobe-mode") {
-      use_strobealign = true;
+      enable_strobealign_extension = true;
     }
     opn++;
   }
 
-  auto opt = parse_command_line_arguments(argc, argv, use_strobealign);
+  auto opt = parse_command_line_arguments(argc, argv, enable_strobealign_extension);
   logger.set_level(opt.verbose ? LOG_DEBUG : LOG_INFO);
   logger.info() << std::setprecision(2) << std::fixed;
 
@@ -3121,6 +3120,7 @@ int main(int argc, char **argv) {
     logger.error() << "Please provide a valid command." << std::endl;
     return 0;
   }
+
   opn = 1;
   int kmer_temp = 0;
   Reference **r = new Reference*[2];
@@ -3132,7 +3132,7 @@ int main(int argc, char **argv) {
   const char *read_file_02;
 
 
-  if(!use_strobealign) {
+  if(!enable_strobealign_extension) {
 
     // Accel-Align Setup
     logger.info() << "Starting Accel-Align Setup" << std::endl;
