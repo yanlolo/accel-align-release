@@ -3323,9 +3323,9 @@ int main(int argc, char **argv) {
   auto start = std::chrono::system_clock::now();
 
 
-  read_file_01 = argv[opn];
+  read_file_01 = opt.reads_filename1;
   if(!opt.is_SE) {
-    read_file_02 = argv[++opn];
+    read_file_02 = opt.reads_filename2;
   }
 
   // Run Accel-Align using the provided mode
