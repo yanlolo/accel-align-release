@@ -3216,10 +3216,10 @@ int main(int argc, char **argv) {
 
     // load reference once
     if (enable_bs){
-      r[0] = new Reference(opt.ref_filename, enable_minimizer, 'c', true);
-      r[1] = new Reference(opt.ref_filename, enable_minimizer, 'g', true);
+      r[0] = new Reference(opt.ref_filename.c_str(), enable_minimizer, 'c', true);
+      r[1] = new Reference(opt.ref_filename.c_str(), enable_minimizer, 'g', true);
     } else {
-      r[0] = new Reference(opt.ref_filename, enable_minimizer, ' ', true);
+      r[0] = new Reference(opt.ref_filename.c_str(), enable_minimizer, ' ', true);
     }
 
     if (enable_extension && !enable_wfa_extension) {
