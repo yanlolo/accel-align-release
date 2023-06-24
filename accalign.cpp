@@ -3099,8 +3099,6 @@ std::string sam_header(const References& references, const std::string& read_gro
 
 
 
-
-
 int main(int argc, char **argv) {
 
   bool use_strobealign = false;
@@ -3132,14 +3130,13 @@ int main(int argc, char **argv) {
   mapping_params map_params;
   const char *read_file_01;
   const char *read_file_02;
-  enable_strobealign_extension = opt.use_strobealign;
 
 
-  if(!enable_strobealign_extension) {
+  if(!use_strobealign) {
 
     // Accel-Align Setup
     logger.info() << "Starting Accel-Align Setup" << std::endl;
-
+  /*
     while (opn < argc) {
       bool option_found = false;
       if (argv[opn][0] == '-') {
@@ -3193,7 +3190,21 @@ int main(int argc, char **argv) {
       }
       if (!option_found)
         break;
-    }
+    }*/
+
+    g_ncpus = atoi(opt.n_threads);
+    kmer_temp = atoi(opt.l);
+    g_out = opt.o;
+    g_embed_file = opt.e;
+    g_batch_file = opt.b;
+    pairdis = atoi(opt.p);
+    enable_extension = opt.x;
+    enable_wfa_extension = opt.w;
+    extend_all = opt.d;
+    enable_minimizer = opt.m;
+    enable_bs = opt.bs;
+
+
     if (kmer_temp != 0)
       kmer_len = kmer_temp;
     mask = kmer_len == 32 ? ~0 : (1ULL << (kmer_len * 2)) - 1;
@@ -3205,10 +3216,10 @@ int main(int argc, char **argv) {
 
     // load reference once
     if (enable_bs){
-      r[0] = new Reference(argv[opn], enable_minimizer, 'c', true);
-      r[1] = new Reference(argv[opn++], enable_minimizer, 'g', true);
+      r[0] = new Reference(opt.ref_filename, enable_minimizer, 'c', true);
+      r[1] = new Reference(opt.ref_filename, enable_minimizer, 'g', true);
     } else {
-      r[0] = new Reference(argv[opn++], enable_minimizer, ' ', true);
+      r[0] = new Reference(opt.ref_filename, enable_minimizer, ' ', true);
     }
 
     if (enable_extension && !enable_wfa_extension) {
@@ -3222,29 +3233,7 @@ int main(int argc, char **argv) {
 
     // accalign command: ./accalign -l 32 -t 7 -s <path-to-ref-genome>/<ref-genome>.fna <path-to-input-folder>/<input-file>.fq > <path-to-output-folder>/<output-file>.sam
     // strobealign command: strobealign --use-index ref.fa reads.1.fastq.gz reads.2.fastq.gz
-    while (opn < argc) {
-      bool option_found = false;
-      if (argv[opn][0] == '-') {
-        if (argv[opn][1] == 't') {
-          g_ncpus = atoi(argv[opn + 1]);
-          opn += 2;
-          option_found = true;
-        } else if (argv[opn][1] == 'x') {
-          enable_extension = false;
-          opn += 1;
-          option_found = true;
-        } else if (std::string(argv[opn]) == "--use-index") {
-          reference_file = argv[++opn];
-          opn += 1;
-          option_found = true;
-        } else if (std::string(argv[opn]) == "--strobe-mode") {
-          opn += 1;
-          option_found = true;
-        }
-      }
-      if (!option_found)
-        break;
-    }
+
     logger.info() << "Starting Strobealign Setup" << std::endl;
 
     // Load accalign Reference data structure without acalign index
