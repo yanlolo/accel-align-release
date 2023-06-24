@@ -3333,7 +3333,7 @@ int main(int argc, char **argv) {
   f.open_output(g_out);
   if (opt.is_SE) {
     f.fastq(read_file_01, "\0", false, index_parameters_reference, index_reference, &map_params);
-  } else if (opn == argc - 2) {
+  } else if (opt.reads_filename2) {
     f.tbb_fastq(read_file_01, read_file_02);
   } else {
     print_usage();
