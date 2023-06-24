@@ -3192,12 +3192,12 @@ int main(int argc, char **argv) {
         break;
     }*/
 
-    g_ncpus = atoi(opt.n_threads);
-    kmer_temp = atoi(opt.l);
+    g_ncpus = atoi(std::string(opt.n_threads).c_str());
+    kmer_temp = atoi(std::string(opt.l).c_str());
     g_out = opt.o;
     g_embed_file = opt.e;
     g_batch_file = opt.b;
-    pairdis = atoi(opt.p);
+    pairdis = atoi(std::string(opt.p).c_str());
     enable_extension = opt.x;
     enable_wfa_extension = opt.w;
     extend_all = opt.d;
