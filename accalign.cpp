@@ -3197,7 +3197,7 @@ int main(int argc, char **argv) {
     g_out = opt.o;
     g_embed_file = opt.e;
     g_batch_file = opt.b;
-    pairdis = atoi(std:to_:string(opt.p).c_str());
+    pairdis = atoi(std:to_string(opt.p).c_str());
     enable_extension = opt.x;
     enable_wfa_extension = opt.w;
     extend_all = opt.d;
