@@ -122,7 +122,7 @@ void show_progress_until_done(std::vector<int>& worker_done, std::vector<Alignme
 }
 
 int run_strobealign(int argc, char **argv) {
-  auto opt = parse_command_line_arguments(argc, argv);
+  auto opt = parse_command_line_arguments(argc, argv, true);
 
   logger.set_level(opt.verbose ? LOG_DEBUG : LOG_INFO);
   logger.info() << std::setprecision(2) << std::fixed;

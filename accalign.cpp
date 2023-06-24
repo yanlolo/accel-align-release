@@ -755,7 +755,6 @@ void AccAlign::pghole_wrapper(Read &R,
   }
 
   // Retrieve Candidate Regions using Accel-Align index
-  // Commented out, due to usage of Strobealign index
   if (enable_minimizer){
     mm128_v mv = {0, 0, 0};
     void *km = nullptr;
@@ -3104,7 +3103,16 @@ std::string sam_header(const References& references, const std::string& read_gro
 
 int main(int argc, char **argv) {
 
-  auto opt = parse_command_line_arguments(argc, argv);
+  bool use_strobealign = false;
+  int opn = 1;
+  while (opn < argc && !use_strobealign) {
+    if (std::string(argv[opn]) == "--strobe-mode") {
+      use_strobealign = true;
+    }
+    opn++;
+  }
+
+  auto opt = parse_command_line_arguments(argc, argv, use_strobealign);
   logger.set_level(opt.verbose ? LOG_DEBUG : LOG_INFO);
   logger.info() << std::setprecision(2) << std::fixed;
 
@@ -3115,7 +3123,7 @@ int main(int argc, char **argv) {
     logger.error() << "Please provide a valid command." << std::endl;
     return 0;
   }
-  int opn = 1;
+  opn = 1;
   int kmer_temp = 0;
   Reference **r = new Reference*[2];
   const char *reference_file;

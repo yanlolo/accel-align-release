@@ -60,8 +60,25 @@ struct CommandLineOptions {
     std::string reads_filename2;
     bool is_SE { true };
     bool is_interleaved { false };
+
+
+    // Accel-Align specific options
+    std::string o;
+    std::string e;
+    std::string b;
+    int p {-1};
+    bool x {true};
+    bool w {false};
+    bool d {false};
+    bool m {false};
+    bool bs {false};
+
 };
 
-CommandLineOptions parse_command_line_arguments(int argc, char **argv);
+CommandLineOptions parse_command_line_arguments(int argc, char **argv, bool use_strobealign);
+CommandLineOptions do_accalign_setup(args::ArgumentParser parser, int argc, char **pString);
+CommandLineOptions do_strobealign_setup(args::ArgumentParser parser, int i, char **pString);
+
+
 
 #endif
