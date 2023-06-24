@@ -3323,9 +3323,9 @@ int main(int argc, char **argv) {
   auto start = std::chrono::system_clock::now();
 
 
-  read_file_01 = opt.reads_filename1;
+  read_file_01 = opt.reads_filename1.c_str();
   if(!opt.is_SE) {
-    read_file_02 = opt.reads_filename2;
+    read_file_02 = opt.reads_filename2.c_str();
   }
 
   // Run Accel-Align using the provided mode
@@ -3333,7 +3333,7 @@ int main(int argc, char **argv) {
   f.open_output(g_out);
   if (opt.is_SE) {
     f.fastq(read_file_01, "\0", false, index_parameters_reference, index_reference, &map_params);
-  } else if (opt.reads_filename2) {
+  } else if (!opt.reads_filename2.empty()) {
     f.tbb_fastq(read_file_01, read_file_02);
   } else {
     print_usage();
