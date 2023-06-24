@@ -3097,8 +3097,6 @@ std::string sam_header(const References& references, const std::string& read_gro
 }
 
 
-
-
 int main(int argc, char **argv) {
 
   int opn = 1;
@@ -3121,7 +3119,6 @@ int main(int argc, char **argv) {
     return 0;
   }
 
-  opn = 1;
   int kmer_temp = 0;
   Reference **r = new Reference*[2];
   const char *reference_file;
@@ -3136,61 +3133,7 @@ int main(int argc, char **argv) {
 
     // Accel-Align Setup
     logger.info() << "Starting Accel-Align Setup" << std::endl;
-  /*
-    while (opn < argc) {
-      bool option_found = false;
-      if (argv[opn][0] == '-') {
-        if (argv[opn][1] == 't') {
-          g_ncpus = atoi(argv[opn + 1]);
-          opn += 2;
-          option_found = true;
-        } else if (argv[opn][1] == 'l') {
-          kmer_temp = atoi(argv[opn + 1]);
-          opn += 2;
-          option_found = true;
-        } else if (argv[opn][1] == 'o') {
-          g_out = argv[opn + 1];
-          opn += 2;
-          option_found = true;
-        } else if (argv[opn][1] == 'e') {
-          g_embed_file = argv[opn + 1];
-          opn += 2;
-          option_found = true;
-        } else if (argv[opn][1] == 'b') {
-          g_batch_file = argv[opn + 1];
-          opn += 2;
-          option_found = true;
-        } else if (argv[opn][1] == 'p') {
-          pairdis = atoi(argv[opn + 1]);
-          opn += 2;
-          option_found = true;
-        } else if (argv[opn][1] == 'x') {
-          enable_extension = false;
-          opn += 1;
-          option_found = true;
-        } else if (argv[opn][1] == 'w') {
-          enable_wfa_extension = true;
-          opn += 1;
-          option_found = true;
-        } else if (argv[opn][1] == 'd') {
-          extend_all = true;
-          opn += 1;
-          option_found = true;
-        } else if (argv[opn][1] == 'm') {
-          enable_minimizer = true;
-          opn += 1;
-          option_found = true;
-        } else if (argv[opn][1] == 's') {
-          enable_bs = true;
-          opn += 1;
-          option_found = true;
-        } else {
-          print_usage();
-        }
-      }
-      if (!option_found)
-        break;
-    }*/
+
 
     g_ncpus = atoi(std::to_string(opt.n_threads).c_str());
     kmer_temp = atoi(std::to_string(opt.l).c_str());
