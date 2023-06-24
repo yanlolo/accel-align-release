@@ -3102,7 +3102,7 @@ std::string sam_header(const References& references, const std::string& read_gro
 int main(int argc, char **argv) {
 
   int opn = 1;
-  while (opn < argc && !use_strobealign) {
+  while (opn < argc && !enable_strobealign_extension) {
     if (std::string(argv[opn]) == "--strobe-mode") {
       enable_strobealign_extension = true;
     }
