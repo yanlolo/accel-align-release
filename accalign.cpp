@@ -3237,10 +3237,13 @@ int main(int argc, char **argv) {
     logger.info() << "Starting Strobealign Setup" << std::endl;
 
     // Load accalign Reference data structure without acalign index
-    if(!reference_file) {
+
+
+    if(opt.ref_filename.empty()) {
       logger.error() << "Please provide a valid reference file" << std::endl;
       return 1;
     }
+    reference_file = opt.ref_filename.c_str();
     r[0] = new Reference(reference_file, enable_minimizer, ' ', false);
 
     if (opt.c >= 64 || opt.c <= 0) {
