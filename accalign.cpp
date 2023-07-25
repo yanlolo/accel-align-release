@@ -2417,7 +2417,9 @@ void AccAlign::score_region(Read &r, char *qseq, Region &region,
     l = qs;
     l += l * SC_MCH + END_BONUS > GAPO ? (l * SC_MCH + END_BONUS - GAPO) / GAPE : 0;
     qs0 = 0, qe0 = qlen;
-    rs0 = rs > l ? rs - l : 0;
+    r.pos = rs;
+    uint32_t chromo_s = get_offset(r.ref_id)[get_tid(r)];
+    rs0 = rs > (l + chromo_s) ? rs - l : chromo_s; // start from the beginning of this chromo
 
     l = qlen - qe;
     l += l * SC_MCH + END_BONUS > GAPO ? (l * SC_MCH + END_BONUS - GAPO) / GAPE : 0;
