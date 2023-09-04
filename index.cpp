@@ -64,7 +64,7 @@ void Index::cal_key(size_t i, vector<Data> &data) {
     }
     h = (h << 2) + ref[i + j];
   }
-  if (!hasn) {
+  if ((!hasn) && (i % step == 0)) {
     data[i / step].key = h % mod;
     data[i / step].pos = i;
   }
