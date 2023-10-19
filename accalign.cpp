@@ -872,6 +872,8 @@ void AccAlign::merge_interval(Region &r, uint32_t last_q_pos, int32_t k) {
   return;
 }
 
+
+
 void AccAlign::extend_interval(Region &r, char*Q, int rlen, int ref_id) {
   for (size_t i = 0; i < r.matched_intervals.size(); ++i) {
     Interval &interval = r.matched_intervals[i];
@@ -1990,8 +1992,8 @@ void AccAlign::map_paired_read_wrapper(Read &mate1, Read &mate2) {
   }
 }
 
-inline bool unfill(Read &R) {
-  return  R.strand == '*' && (!R.force_align);
+inline bool not_aligned(Read &R1, Read &R2) {
+  return  R1.strand == '*' || (R1.force_align && (R1.as * R2.as <= 0));
 }
 
 void AccAlign::print_paired_sam(Read &R, Read &R2) {
@@ -2019,20 +2021,20 @@ void AccAlign::print_paired_sam(Read &R, Read &R2) {
   flag |= 0x40;
   ss << flag;
 
-  ss << '\t' << (unfill(R) ? "*" : get_name(R.ref_id)[R.tid]);
-  ss << '\t' << (unfill(R) ? 0 : R.pos);
-  ss << '\t' << (unfill(R) ? 0 : (int) R.mapq);
-  ss << '\t' << (unfill(R) ? "*" : R.cigar) << '\t';
+  ss << '\t' << (not_aligned(R, R2) ? "*" : get_name(R.ref_id)[R.tid]);
+  ss << '\t' << (not_aligned(R, R2) ? 0 : R.pos);
+  ss << '\t' << (not_aligned(R, R2) ? 0 : (int) R.mapq);
+  ss << '\t' << (not_aligned(R, R2) ? "*" : R.cigar) << '\t';
 
-  if (R.strand == '*' || R2.strand == '*')
+  if (R.strand == '*' || R2.strand == '*' || not_aligned(R, R2))
     ss << '*';
   else
     ss << (get_name(R.ref_id)[R.tid] == get_name(R.ref_id)[R2.tid] ? "=" : get_name(R.ref_id)[R2.tid].c_str());
 
-  ss << '\t' << (strand2 == '*' ? 0 : R2.pos);
+  ss << '\t' << (strand2 == '*' || not_aligned(R, R2) ? 0 : R2.pos);
 
   int isize = 0;
-  if (R.strand != '*' && R2.strand != '*') {
+  if ((!not_aligned) && R.strand != '*' && R2.strand != '*') {
     if (R.pos > R2.pos)
       isize = R2.pos - R.pos - strlen(R.seq);
     else
@@ -2046,8 +2048,12 @@ void AccAlign::print_paired_sam(Read &R, Read &R2) {
   } else {
     ss << '\t' << R.seq;
   }
-  ss << '\t' << R.qua << "\tNM:i:" << R.nm << "\tAS:i:" << R.as << endl;
-
+  
+  if (not_aligned(R, R2)){
+    ss << '\t' << R.qua << "\tNM:i:" << 0 << "\tAS:i:" << 0 << endl;
+  } else {
+    ss << '\t' << R.qua << "\tNM:i:" << R.nm << "\tAS:i:" << R.as << endl;
+  }
 
   //for mate2
   string rname2 = R2.name;
@@ -2067,17 +2073,17 @@ void AccAlign::print_paired_sam(Read &R, Read &R2) {
   flag |= 0x80;
 
   ss << flag;
-  ss << '\t' << (unfill(R2) ? "*" : get_name(R2.ref_id)[R2.tid]);
-  ss << '\t' << (unfill(R2) ? 0 : R2.pos);
-  ss << '\t' << (unfill(R2) ? 0 : (int) R2.mapq);
-  ss << '\t' << (unfill(R2) ? "*" : R2.cigar) << '\t';
+  ss << '\t' << (not_aligned(R2, R) ? "*" : get_name(R2.ref_id)[R2.tid]);
+  ss << '\t' << (not_aligned(R2, R) ? 0 : R2.pos);
+  ss << '\t' << (not_aligned(R2, R) ? 0 : (int) R2.mapq);
+  ss << '\t' << (not_aligned(R2, R) ? "*" : R2.cigar) << '\t';
 
-  if (R.strand == '*' || R2.strand == '*')
+  if (R.strand == '*' || R2.strand == '*'|| not_aligned(R2, R))
     ss << '*';
   else
     ss << (get_name(R2.ref_id)[R.tid] == get_name(R2.ref_id)[R2.tid] ? "=" : get_name(R2.ref_id)[R.tid].c_str());
 
-  ss << '\t' << (strand2 == '*' ? 0 : R.pos);
+  ss << '\t' << (strand2 == '*' || not_aligned(R2, R) ? 0 : R.pos);
   ss << '\t' << -isize;
   if (strand2 == '-') {
     std::reverse(R2.qua, R2.qua + strlen(R2.qua));
@@ -2085,7 +2091,11 @@ void AccAlign::print_paired_sam(Read &R, Read &R2) {
   } else {
     ss << '\t' << R2.seq;
   }
-  ss << '\t' << R2.qua << "\tNM:i:" << R2.nm << "\tAS:i:" << R2.as << endl;
+
+  if (not_aligned(R2, R))
+    ss << '\t' << R2.qua << "\tNM:i:" << 0 << "\tAS:i:" << 0 << endl;
+  else
+    ss << '\t' << R2.qua << "\tNM:i:" << R2.nm << "\tAS:i:" << R2.as << endl;
 
   {
     std::lock_guard<std::mutex> guard(sam_mutex);
