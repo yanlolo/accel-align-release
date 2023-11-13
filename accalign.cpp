@@ -1872,9 +1872,9 @@ void AccAlign::map_paired_read(Read &mate1, Read &mate2, int ref_id) {
     return;
   }
 
-  pghole_wrapper_pair(mate1, mate2, region_f1, region_r1, region_f2, region_r2,
-                      best_f1, best_r1, best_f2, best_r2, next_f1, next_r1, next_f2, next_r2,
-                      flag_f1, flag_r1, flag_f2, flag_r2, has_f1r2, has_r1f2, ref_id);
+//  pghole_wrapper_pair(mate1, mate2, region_f1, region_r1, region_f2, region_r2,
+//                      best_f1, best_r1, best_f2, best_r2, next_f1, next_r1, next_f2, next_r2,
+//                      flag_f1, flag_r1, flag_f2, flag_r2, has_f1r2, has_r1f2, ref_id);
   auto end = std::chrono::system_clock::now();
   auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
   seeding_time += elapsed.count();
@@ -1884,16 +1884,16 @@ void AccAlign::map_paired_read(Read &mate1, Read &mate2, int ref_id) {
     map_read_wrapper(mate2);
     if (mate1.strand == '*' && mate2.strand == '*')
       return;
-    else if ((mate1.strand != '*' && mate2.strand != '*' && mate1.best_region.embed_dist < mate2.best_region.embed_dist)
-    || mate2.strand == '*'){
-      mate2.strand = '*';
-      mate2.force_align = true;
-      mate2.pos = mate1.best_region.rs;
-    }else{
-      mate1.strand = '*';
-      mate1.force_align = true;
-      mate1.pos = mate2.best_region.rs;
-    }
+//    else if ((mate1.strand != '*' && mate2.strand != '*' && mate1.best_region.embed_dist < mate2.best_region.embed_dist)
+//    || mate2.strand == '*'){
+//      mate2.strand = '*';
+//      mate2.force_align = true;
+//      mate2.pos = mate1.best_region.rs;
+//    }else{
+//      mate1.strand = '*';
+//      mate1.force_align = true;
+//      mate1.pos = mate2.best_region.rs;
+//    }
     return;
   }
 
