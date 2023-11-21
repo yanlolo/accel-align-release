@@ -20,6 +20,7 @@
 using namespace tbb::flow;
 using namespace std;
 
+bool enable_cheap_seed = true;
 unsigned kmer_len = 32;
 int kmer_step = 32;
 uint64_t mask;
@@ -414,6 +415,24 @@ void AccAlign::mark_for_extension(Read &read, char S, Region &cregion, int ref_i
   }
 }
 
+/*
+ *  get the index of N smallest input values
+ */
+inline static vector<int> findBestIndices(vector<size_t> &input, const int &N){
+  vector<int> indices(input.size());
+  std::iota(indices.begin(), indices.end(), 0); // fill with 0,1,2,...
+
+  std::partial_sort(indices.begin(), indices.begin()+N, indices.end(),
+                    [&input](int i,int j) {return input[i]<input[j];});
+
+  return vector<int>(indices.begin(), indices.begin()+N);
+}
+
+inline static bool is_selected_seed(bool high_freq, unsigned max_occ, size_t cnt, int idx, vector<int> &slct_seed_idx){
+  bool is_inlist = std::find(slct_seed_idx.begin(), slct_seed_idx.end(), idx) != slct_seed_idx.end();
+  return is_inlist && ((!high_freq && cnt < max_occ) || high_freq);
+}
+
 void AccAlign::pigeonhole_query_topcov(char *Q,
                                        size_t rlen,
                                        vector<Region> &candidate_regions,
@@ -426,12 +445,15 @@ void AccAlign::pigeonhole_query_topcov(char *Q,
                                        int ref_id) {
   int max_cov = 0;
   unsigned nkmers = (rlen - ori_slide - kmer_len) / kmer_step + 1;
+  unsigned nkmers_slct = (rlen - ori_slide - kmer_len) / kmer_len + 1;
   size_t ntotal_hits = 0;
   size_t b[nkmers], e[nkmers];
   unsigned kmer_idx = 0;
   unsigned ori_slide_bk = ori_slide;
   unsigned nseed_freq = 0;
   bool high_freq = false;
+  vector<size_t> cnt;
+  cnt.reserve(nkmers);
 
   // Take non-overlapping seeds and find all hits
   auto start = std::chrono::system_clock::now();
@@ -442,11 +464,9 @@ void AccAlign::pigeonhole_query_topcov(char *Q,
     size_t hash = (k & mask) % MOD;
     b[kmer_idx] = get_keyv(ref_id)[hash];
     e[kmer_idx] = get_keyv(ref_id)[hash + 1];
+    cnt.push_back(e[kmer_idx] - b[kmer_idx]);
     if (e[kmer_idx] - b[kmer_idx] >= max_occ)
       nseed_freq++;
-//    if (e[kmer_idx] - b[kmer_idx] < max_occ) {
-//      ntotal_hits += (e[kmer_idx] - b[kmer_idx]);
-//    }
     kmer_idx++;
   }
   assert(kmer_idx == nkmers);
@@ -454,11 +474,13 @@ void AccAlign::pigeonhole_query_topcov(char *Q,
   auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
   keyvTime += elapsed.count();
 
+  vector<int> slct_seed_idx = findBestIndices(cnt, nkmers_slct);
+
   if (nseed_freq > nkmers / 2)
     high_freq = true;
 
   for (size_t i = 0; i < nkmers; i++) {
-    if ((!high_freq && e[i] - b[i] < max_occ) || high_freq)
+    if (is_selected_seed(high_freq, max_occ, cnt[i], i, slct_seed_idx))
       ntotal_hits += (e[i] - b[i]);
   }
 
@@ -473,8 +495,7 @@ void AccAlign::pigeonhole_query_topcov(char *Q,
   start = std::chrono::system_clock::now();
   // initialize top values with first values for each kmer.
   for (unsigned i = 0; i < nkmers; i++) {
-    if (b[i] < e[i] && ((!high_freq && e[i] - b[i] < max_occ) || high_freq)) {
-//    if (b[i] < e[i] && e[i] - b[i] < max_occ) {
+    if (b[i] < e[i] && is_selected_seed(high_freq, max_occ, cnt[i], i, slct_seed_idx)) {
       top_pos[i] = get_posv(ref_id)[b[i]];
       rel_off[i] = i * kmer_step;
       uint32_t shift_pos = rel_off[i] + ori_slide_bk;
@@ -512,8 +533,7 @@ void AccAlign::pigeonhole_query_topcov(char *Q,
     uint32_t min_pos = *min_item;
     int min_kmer = min_item - top_pos;
 
-    if ((!high_freq && e[min_kmer] - b[min_kmer] < max_occ) || high_freq) {
-//    if (e[min_kmer] - b[min_kmer] < max_occ) {
+    if (is_selected_seed(high_freq, max_occ, cnt[min_kmer], min_kmer, slct_seed_idx)) {
       // kick off prefetch for next round
       __builtin_prefetch(get_posv(ref_id) + b[min_kmer] + 1);
 
@@ -1231,10 +1251,13 @@ void AccAlign::pigeonhole_query(char *Q,
                                 bool &high_freq, int ref_id) {
   int max_cov = 0;
   unsigned nkmers = (rlen - ori_slide - kmer_len) / kmer_step + 1;
+  unsigned nkmers_slct = (rlen - ori_slide - kmer_len) / kmer_len + 1;
   size_t ntotal_hits = 0;
   size_t b[nkmers], e[nkmers];
   unsigned kmer_idx = 0;
   unsigned nseed_freq = 0;
+  vector<size_t> cnt;
+  cnt.reserve(nkmers);
 
   // Take non-overlapping seeds and find all hits
   auto start = std::chrono::system_clock::now();
@@ -1245,6 +1268,7 @@ void AccAlign::pigeonhole_query(char *Q,
     size_t hash = (k & mask) % MOD;
     b[kmer_idx] = get_keyv(ref_id)[hash];
     e[kmer_idx] = get_keyv(ref_id)[hash + 1];
+    cnt.push_back(e[kmer_idx] - b[kmer_idx]);
     if (e[kmer_idx] - b[kmer_idx] >= max_occ)
       nseed_freq++;
     kmer_idx++;
@@ -1254,11 +1278,13 @@ void AccAlign::pigeonhole_query(char *Q,
   auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
   keyvTime += elapsed.count();
 
+  vector<int> slct_seed_idx = findBestIndices(cnt, nkmers_slct);
+
   if (nseed_freq > nkmers / 2)
     high_freq = true;
 
   for (size_t i = 0; i < nkmers; i++) {
-    if ((!high_freq && e[i] - b[i] < max_occ) || high_freq)
+    if (is_selected_seed(high_freq, max_occ, cnt[i], i, slct_seed_idx))
       ntotal_hits += (e[i] - b[i]);
   }
 
@@ -1272,7 +1298,7 @@ void AccAlign::pigeonhole_query(char *Q,
   start = std::chrono::system_clock::now();
   // initialize top values with first values for each kmer.
   for (unsigned i = 0; i < nkmers; i++) {
-    if (b[i] < e[i] && ((!high_freq && e[i] - b[i] < max_occ) || high_freq)) {
+    if (b[i] < e[i] && is_selected_seed(high_freq, max_occ, cnt[i], i, slct_seed_idx)) {
       top_pos[i] = get_posv(ref_id)[b[i]];
       rel_off[i] = i * kmer_step;
       uint32_t shift_pos = rel_off[i] + ori_slide;
@@ -1299,7 +1325,7 @@ void AccAlign::pigeonhole_query(char *Q,
     uint32_t min_pos = *min_item;
     int min_kmer = min_item - top_pos;
 
-    if ((!high_freq && e[min_kmer] - b[min_kmer] < max_occ) || high_freq) {
+    if (is_selected_seed(high_freq, max_occ, cnt[min_kmer], min_kmer, slct_seed_idx)) {
       // kick off prefetch for next round
       __builtin_prefetch(get_posv(ref_id) + b[min_kmer] + 1);
 
