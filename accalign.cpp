@@ -801,21 +801,21 @@ void AccAlign::pghole_wrapper(Read &R,
 
       unsigned nkmers = (rlen - ori_slide - kmer_len) / kmer_step + 1;
 
-    if (nkmers < 4) {
+//    if (nkmers < 4) {
       //nkmer 3, 2, 1, top 2 cov of cov >=2, is 3, 2, is as same as cov>=2
       // as cov2 is faster than top2, use cov2
-      pigeonhole_query(R.fwd, rlen, fcandidate_regions, '+', fbest, ori_slide, 2, kmer_step, MAX_OCC, high_freq, ref_id);
-      pigeonhole_query(R.rev, rlen, rcandidate_regions, '-', rbest, ori_slide, 2, kmer_step, MAX_OCC, high_freq, ref_id);
-    } else {
-      pigeonhole_query_topcov(R.fwd, rlen, fcandidate_regions, '+', 2, kmer_step, MAX_OCC, fbest, ori_slide, ref_id);
-      pigeonhole_query_topcov(R.rev, rlen, rcandidate_regions, '-', 2, kmer_step, MAX_OCC, rbest, ori_slide, ref_id);
-    }
+      pigeonhole_query(R, R.fwd, rlen, fcandidate_regions, '+', fbest, ori_slide, 2, kmer_step, MAX_OCC, high_freq, ref_id);
+      pigeonhole_query(R, R.rev, rlen, rcandidate_regions, '-', rbest, ori_slide, 2, kmer_step, MAX_OCC, high_freq, ref_id);
+//    } else {
+//      pigeonhole_query_topcov(R.fwd, rlen, fcandidate_regions, '+', 2, kmer_step, MAX_OCC, fbest, ori_slide, ref_id);
+//      pigeonhole_query_topcov(R.rev, rlen, rcandidate_regions, '-', 2, kmer_step, MAX_OCC, rbest, ori_slide, ref_id);
+//    }
       nfregions = fcandidate_regions.size();
       nrregions = rcandidate_regions.size();
 
       if (!nfregions && !nrregions) {
-        pigeonhole_query(R.fwd, rlen, fcandidate_regions, '+', fbest, ori_slide, 1, kmer_step, MAX_OCC, high_freq, ref_id);
-        pigeonhole_query(R.rev, rlen, rcandidate_regions, '-', rbest, ori_slide, 1, kmer_step, MAX_OCC, high_freq, ref_id);
+        pigeonhole_query(R, R.fwd, rlen, fcandidate_regions, '+', fbest, ori_slide, 1, kmer_step, MAX_OCC, high_freq, ref_id);
+        pigeonhole_query(R, R.rev, rlen, rcandidate_regions, '-', rbest, ori_slide, 1, kmer_step, MAX_OCC, high_freq, ref_id);
         nfregions = fcandidate_regions.size();
         nrregions = rcandidate_regions.size();
       }
@@ -1239,7 +1239,7 @@ void AccAlign::fetch_candidates(mm128_v &mv, int32_t mid_occ, size_t rlen, int e
 //  }
 //}
 
-void AccAlign::pigeonhole_query(char *Q,
+void AccAlign::pigeonhole_query(Read &mate, char *Q,
                                 size_t rlen,
                                 vector<Region> &candidate_regions,
                                 char S,
@@ -1298,6 +1298,22 @@ void AccAlign::pigeonhole_query(char *Q,
   start = std::chrono::system_clock::now();
   // initialize top values with first values for each kmer.
   for (unsigned i = 0; i < nkmers; i++) {
+    cout << mate.name << ", " << i << ", ";
+    uint32_t tmp = 0;
+    if (b[i] < e[i] && is_selected_seed(high_freq, max_occ, cnt[i], i, slct_seed_idx)) {
+      for (uint32_t j = b[i]; j < e[i]; j++) {
+        tmp = get_posv(ref_id)[j];
+        tmp -= min(tmp, i * kmer_step + ori_slide); //pos can't <0, e.g. insertion before this kmer, set 0 instead of -1
+        cout << tmp << ", ";
+      }
+    } else {
+      tmp = MAX_POS;
+      cout << tmp << ", ";
+    }
+    cout << endl;
+  }
+
+  for (unsigned i = 0; i < nkmers; i++) {
     if (b[i] < e[i] && is_selected_seed(high_freq, max_occ, cnt[i], i, slct_seed_idx)) {
       top_pos[i] = get_posv(ref_id)[b[i]];
       rel_off[i] = i * kmer_step;
@@ -1307,6 +1323,7 @@ void AccAlign::pigeonhole_query(char *Q,
       top_pos[i] = MAX_POS;
     }
   }
+
   end = std::chrono::system_clock::now();
   elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
   posvTime += elapsed.count();
@@ -1409,15 +1426,15 @@ void AccAlign::pghole_wrapper_mates(Read &R,
   unsigned rlen = strlen(R.seq);
 
   // MAX_OCC, cov >= 2
-  pigeonhole_query(R.fwd, rlen, fcandidate_regions, '+', fbest, ori_slide, 2, kmer_step, max_occ, high_freq, ref_id);
-  pigeonhole_query(R.rev, rlen, rcandidate_regions, '-', rbest, ori_slide, 2, kmer_step, max_occ, high_freq, ref_id);
+  pigeonhole_query(R, R.fwd, rlen, fcandidate_regions, '+', fbest, ori_slide, 2, kmer_step, max_occ, high_freq, ref_id);
+  pigeonhole_query(R, R.rev, rlen, rcandidate_regions, '-', rbest, ori_slide, 2, kmer_step, max_occ, high_freq, ref_id);
   R.kmer_step = kmer_step;
   unsigned nfregions = fcandidate_regions.size();
   unsigned nrregions = rcandidate_regions.size();
 
   if (!nfregions && !nrregions) {
-    pigeonhole_query(R.fwd, rlen, fcandidate_regions, '+', fbest, ori_slide, 1, kmer_step, max_occ, high_freq, ref_id);
-    pigeonhole_query(R.rev, rlen, rcandidate_regions, '-', rbest, ori_slide, 1, kmer_step, max_occ, high_freq, ref_id);
+    pigeonhole_query(R, R.fwd, rlen, fcandidate_regions, '+', fbest, ori_slide, 1, kmer_step, max_occ, high_freq, ref_id);
+    pigeonhole_query(R, R.rev, rlen, rcandidate_regions, '-', rbest, ori_slide, 1, kmer_step, max_occ, high_freq, ref_id);
   }
 }
 
