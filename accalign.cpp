@@ -838,7 +838,7 @@ void AccAlign::find_candidate_positions_using_strobealign(char *seq, vector<Regi
   }
 
 //  std::sort(nams.begin(), nams.end(), [](const Nam &a, const Nam &b) -> bool {
-//    return a.score > b.score;
+//    return a.as > b.as;
 //  });
 
   Region region;
@@ -849,7 +849,7 @@ void AccAlign::find_candidate_positions_using_strobealign(char *seq, vector<Regi
       region.qs = nam.query_start;
       region.qe = nam.query_end;
       region.cov = nam.n_hits;
-      region.score = (int)nam.score;
+      region.as = (int)nam.score;
       region.matched_intervals.push_back(Interval{static_cast<uint32_t>(nam.query_start), static_cast<uint32_t>(nam.query_end)});
       candidate_regions.push_back(move(region));
     }
@@ -1701,9 +1701,9 @@ void AccAlign::map_read(Read &R, int ref_id) {
       char *s = R.fwd;
       Alignment a;
       score_region(R, s, region, a);
-      if (region.score >= max_as) {
+      if (region.as >= max_as) {
         r = region;
-        max_as = region.score;
+        max_as = region.as;
       }
     }
 
@@ -1711,10 +1711,10 @@ void AccAlign::map_read(Read &R, int ref_id) {
       char *s = R.rev;
       Alignment a;
       score_region(R, s, region, a);
-      if (region.score >= max_as) {
+      if (region.as >= max_as) {
         r = region;
         strand = '-';
-        max_as = region.score;
+        max_as = region.as;
       }
     }
 
@@ -1861,7 +1861,7 @@ void AccAlign::extend_pair(Read &mate1, Read &mate2,
 
     assert(start != end);
     for (auto itr = start; itr != end; ++itr) {
-      int sum_as = region.score + itr->score;
+      int sum_as = region.as + itr->as;
       if (sum_as >= best_threshold) {
         best_f1 = itr - candidate_regions_f1.begin();
         best_r2 = i;
@@ -2546,14 +2546,14 @@ void AccAlign::score_region(Read &r, char *qseq, Region &region,
   unsigned qlen = strlen(r.seq);
 
   if (!enable_extension) {
-    region.score = qlen * SC_MCH;
+    region.as = qlen * SC_MCH;
     r.mapq = get_mapq(r.best, r.secBest);
   } else if (!extend_all && (region.embed_dist == 0 || region.embed_dist == 1)) {
     // if the region has a embed distance of 0, then its an exact match
     if (region.embed_dist == 0)
-      region.score = qlen * SC_MCH;
+      region.as = qlen * SC_MCH;
     if (region.embed_dist == 1)
-      region.score = (qlen - 1) * SC_MCH - SC_MIS;
+      region.as = (qlen - 1) * SC_MCH - SC_MIS;
 
     r.mapq = get_mapq(r.best, r.secBest);
   } else {
@@ -2669,7 +2669,7 @@ void AccAlign::score_region(Read &r, char *qseq, Region &region,
       r.mapq = get_mapq(r.best, r.secBest);
       a.cigar_string = cigar_string.str();
       a.ref_begin = 0;
-      region.score = extension->dp_score;
+      region.as = extension->dp_score;
       a.mismatches = edit_mismatch;
     }
 
@@ -2715,7 +2715,7 @@ void AccAlign::save_region(Read &R, size_t rlen, Region &region,
     R.cigar[cigar_len] = '\0';
     R.nm = a.mismatches;
   }
-  R.as = region.score;
+  R.as = region.as;
 
   R.tid = get_tid(R);
 
