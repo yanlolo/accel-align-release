@@ -38,6 +38,27 @@ struct Region {
     else
       return X.rs < Y.rs;
   }
+
+  // if last_q_pos is in range of match_interval, merge them togeter; k is the length of the interval (kmer_len)
+  void merge_interval(SType g_stype, uint32_t last_q_pos, int32_t k) {
+    if (g_stype==SType::Minimizer)
+      last_q_pos = (last_q_pos >> 1) - k + 1; //q_pos format: pos << 1 | z
+
+    if (!matched_intervals.size())
+      matched_intervals.push_back(Interval{last_q_pos, last_q_pos + k});
+
+    for (Interval &interval: matched_intervals) {
+      if (last_q_pos >= interval.s && last_q_pos <= interval.e) {
+        interval.e = last_q_pos + k;
+        return;
+      }
+    }
+
+    //no overlap, new interval
+    matched_intervals.push_back(Interval{last_q_pos, last_q_pos + k});
+    return;
+  }
+
 };
 
 struct Read {

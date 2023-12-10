@@ -128,7 +128,7 @@ class AccAlign {
   bool tbb_fastq(const char *F1, const char *F2);
   int get_mapq(int best, int secbest);
   int get_tid(Read &R);
-  void merge_interval(Region &r, uint32_t last_q_pos, int32_t k);
+//  void merge_interval(Region &r, uint32_t last_q_pos, int32_t k);
   void extend_interval(Region &r, char*Q, int rlen, int ref_id);
   void collect_seed_hits_priorityqueue(int n_m0, int64_t n_a, size_t rlen, int err_threshold, mm_seed_t* m, vector<Region> &candidate_regions,
                                                  vector<Region> &rcandidate_regions, unsigned &best, unsigned &rbest, int ref_id);

@@ -433,325 +433,325 @@ inline static bool is_selected_seed(bool high_freq, unsigned max_occ, size_t cnt
   return is_inlist && ((!high_freq && cnt < max_occ) || high_freq);
 }
 
-void AccAlign::pigeonhole_query_topcov(char *Q,
-                                       size_t rlen,
-                                       vector<Region> &candidate_regions,
-                                       char S,
-                                       int err_threshold,
-                                       unsigned kmer_step,
-                                       unsigned max_occ,
-                                       unsigned &best,
-                                       unsigned ori_slide,
-                                       int ref_id) {
-  int max_cov = 0;
-  unsigned nkmers = (rlen - ori_slide - kmer_len) / kmer_step + 1;
-  unsigned nkmers_slct = (rlen - ori_slide - kmer_len) / kmer_len + 1;
-  size_t ntotal_hits = 0;
-  size_t b[nkmers], e[nkmers];
-  unsigned kmer_idx = 0;
-  unsigned ori_slide_bk = ori_slide;
-  unsigned nseed_freq = 0;
-  bool high_freq = false;
-  vector<size_t> cnt;
-  cnt.reserve(nkmers);
-
-  // Take non-overlapping seeds and find all hits
-  auto start = std::chrono::system_clock::now();
-  for (size_t i = ori_slide; i + kmer_len <= rlen; i += kmer_step) {
-    uint64_t k = 0;
-    for (size_t j = i; j < i + kmer_len; j++)
-      k = (k << 2) + *(Q + j);
-    size_t hash = (k & mask) % MOD;
-    b[kmer_idx] = get_keyv(ref_id)[hash];
-    e[kmer_idx] = get_keyv(ref_id)[hash + 1];
-    cnt.push_back(e[kmer_idx] - b[kmer_idx]);
-    if (e[kmer_idx] - b[kmer_idx] >= max_occ)
-      nseed_freq++;
-    kmer_idx++;
-  }
-  assert(kmer_idx == nkmers);
-  auto end = std::chrono::system_clock::now();
-  auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-  keyvTime += elapsed.count();
-
-  vector<int> slct_seed_idx = findBestIndices(cnt, nkmers_slct);
-
-  if (nseed_freq > nkmers / 2)
-    high_freq = true;
-
-  for (size_t i = 0; i < nkmers; i++) {
-    if (is_selected_seed(high_freq, max_occ, cnt[i], i, slct_seed_idx))
-      ntotal_hits += (e[i] - b[i]);
-  }
-
-  // if we have no hits, we are done
-  if (!ntotal_hits)
-    return;
-
-  uint32_t top_pos[nkmers];
-  int rel_off[nkmers];
-  uint32_t MAX_POS = numeric_limits<uint32_t>::max();
-
-  start = std::chrono::system_clock::now();
-  // initialize top values with first values for each kmer.
-  for (unsigned i = 0; i < nkmers; i++) {
-    if (b[i] < e[i] && is_selected_seed(high_freq, max_occ, cnt[i], i, slct_seed_idx)) {
-      top_pos[i] = get_posv(ref_id)[b[i]];
-      rel_off[i] = i * kmer_step;
-      uint32_t shift_pos = rel_off[i] + ori_slide_bk;
-      //TODO: for each chrome, happen to < the start pos
-      if (top_pos[i] < shift_pos)
-        top_pos[i] = 0; // there is insertion before this kmer
-      else
-        top_pos[i] -= shift_pos;
-    } else {
-      top_pos[i] = MAX_POS;
-    }
-  }
-  end = std::chrono::system_clock::now();
-  elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-  posvTime += elapsed.count();
-
-  size_t nprocessed = 0;
-  uint32_t last_pos = MAX_POS, last_qs = ori_slide_bk; //last query start pos
-  int last_cov = 0;
-
-  start = std::chrono::system_clock::now();
-
-  vector<Region> unique_regions;
-  unique_regions.reserve(ntotal_hits);
-  size_t idx = 0;
-  Region r;
-  r.matched_intervals.reserve(nkmers);
-//  Region unique_regions[ntotal_hits];
-//  size_t idx = 0;
-//  Region *r = unique_regions + idx;
-
-  while (nprocessed < ntotal_hits) {
-    //find min
-    uint32_t *min_item = min_element(top_pos, top_pos + nkmers);
-    uint32_t min_pos = *min_item;
-    int min_kmer = min_item - top_pos;
-
-    if (is_selected_seed(high_freq, max_occ, cnt[min_kmer], min_kmer, slct_seed_idx)) {
-      // kick off prefetch for next round
-      __builtin_prefetch(get_posv(ref_id) + b[min_kmer] + 1);
-
-      // if previous min element was same as current one, increment coverage.
-      // otherwise, check if last min element's coverage was high enough to make it a candidate region
-
-      if (min_pos == last_pos) {
-        merge_interval(r, last_qs, kmer_len);
-//        r.matched_intervals.push_back(Interval{last_qs, last_qs + kmer_len});
-        last_cov++;
-      } else {
-        if (nprocessed != 0) {
-          r.cov = last_cov;
-          r.rs = last_pos;
-          merge_interval(r, last_qs, kmer_len);
-          extend_interval( r, Q,  rlen,  ref_id);
-//          r.matched_intervals.push_back(Interval{last_qs, last_qs + kmer_len});
-          r.qs = r.matched_intervals[0].s; //the first match seed, so left extension could be accurate
-          r.qe = r.matched_intervals[0].e;
-
-          if (last_cov > max_cov)
-            max_cov = last_cov;
-
-          assert(r.rs != MAX_POS && r.rs < MAX_POS);
-          unique_regions.push_back(move(r));
-          ++idx;
-//          r =  unique_regions + idx;
-        }
-
-        last_cov = 1;
-      }
-      last_qs = min_kmer * kmer_step + ori_slide_bk;
-      last_pos = min_pos;
-    }
-
-    // add next element
-    b[min_kmer]++;
-    uint32_t next_pos = b[min_kmer] < e[min_kmer] ? get_posv(ref_id)[b[min_kmer]] : MAX_POS;
-    if (next_pos != MAX_POS) {
-      uint32_t shift_pos = rel_off[min_kmer] + ori_slide_bk;
-      //TODO: for each chrome, happen to < the start pos
-      if (next_pos < shift_pos)
-        *min_item = 0; // there is insertion before this kmer
-      else
-        *min_item = next_pos - shift_pos;
-    } else
-      *min_item = MAX_POS;
-
-    ++nprocessed;
-  }
-
-  // we will have the last few positions not processed. check here.
-  if (last_pos != MAX_POS) {
-    r.cov = last_cov;
-    r.rs = last_pos;
-    merge_interval(r, last_qs, kmer_len);
-    extend_interval( r, Q,  rlen,  ref_id);
-//    r.matched_intervals.push_back(Interval{last_qs, last_qs + kmer_len});
-    r.qs = r.matched_intervals[0].s; //the first match seed, so left extension could be accurate
-    r.qe = r.matched_intervals[0].e;
-
-    if (last_cov > max_cov)
-      max_cov = last_cov;
-
-    assert(r.rs != MAX_POS && r.rs < MAX_POS);
-    unique_regions.push_back(move(r));
-    ++idx;
-  }
-
-  err_threshold = max(err_threshold, max_cov - 1);
-  assert(idx <= ntotal_hits);
-  for (size_t i = 0; i < idx; i++) {
-    Region &r = unique_regions[i];
-    if (r.cov >= err_threshold) {
-      if (r.cov == max_cov)
-        best = candidate_regions.size();
-
-      candidate_regions.push_back(move(r));
-    }
-  }
-
-  end = std::chrono::system_clock::now();
-  elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-  hit_count_time += elapsed.count();
-}
-
-void AccAlign::pigeonhole_query_sort(char *Q,
-                                     size_t rlen,
-                                     vector<Region> &candidate_regions,
-                                     char S,
-                                     unsigned err_threshold,
-                                     unsigned kmer_step,
-                                     unsigned max_occ,
-                                     unsigned &best,
-                                     unsigned ori_slide,
-                                     int ref_id) {
-  unsigned max_cov = 0;
-  unsigned nkmers = (rlen - ori_slide - kmer_len) / kmer_step + 1;
-  size_t ntotal_hits = 0;
-  size_t b[nkmers], e[nkmers];
-  unsigned kmer_idx = 0;
-  unsigned nseed_freq = 0;
-  bool high_freq = false;
-
-  // Take non-overlapping seeds and find all hits
-  auto start = std::chrono::system_clock::now();
-  for (size_t i = ori_slide; i + kmer_len <= rlen; i += kmer_step) {
-    uint64_t k = 0;
-    for (size_t j = i; j < i + kmer_len; j++)
-      k = (k << 2) + *(Q + j);
-    size_t hash = (k & mask) % MOD;
-    b[kmer_idx] = get_keyv(ref_id)[hash];
-    e[kmer_idx] = get_keyv(ref_id)[hash + 1];
-    if (e[kmer_idx] - b[kmer_idx] >= max_occ)
-      nseed_freq++;
-//    if (e[kmer_idx] - b[kmer_idx] < max_occ) {
-//      ntotal_hits += (e[kmer_idx] - b[kmer_idx]);
+//void AccAlign::pigeonhole_query_topcov(char *Q,
+//                                       size_t rlen,
+//                                       vector<Region> &candidate_regions,
+//                                       char S,
+//                                       int err_threshold,
+//                                       unsigned kmer_step,
+//                                       unsigned max_occ,
+//                                       unsigned &best,
+//                                       unsigned ori_slide,
+//                                       int ref_id) {
+//  int max_cov = 0;
+//  unsigned nkmers = (rlen - ori_slide - kmer_len) / kmer_step + 1;
+//  unsigned nkmers_slct = (rlen - ori_slide - kmer_len) / kmer_len + 1;
+//  size_t ntotal_hits = 0;
+//  size_t b[nkmers], e[nkmers];
+//  unsigned kmer_idx = 0;
+//  unsigned ori_slide_bk = ori_slide;
+//  unsigned nseed_freq = 0;
+//  bool high_freq = false;
+//  vector<size_t> cnt;
+//  cnt.reserve(nkmers);
+//
+//  // Take non-overlapping seeds and find all hits
+//  auto start = std::chrono::system_clock::now();
+//  for (size_t i = ori_slide; i + kmer_len <= rlen; i += kmer_step) {
+//    uint64_t k = 0;
+//    for (size_t j = i; j < i + kmer_len; j++)
+//      k = (k << 2) + *(Q + j);
+//    size_t hash = (k & mask) % MOD;
+//    b[kmer_idx] = get_keyv(ref_id)[hash];
+//    e[kmer_idx] = get_keyv(ref_id)[hash + 1];
+//    cnt.push_back(e[kmer_idx] - b[kmer_idx]);
+//    if (e[kmer_idx] - b[kmer_idx] >= max_occ)
+//      nseed_freq++;
+//    kmer_idx++;
+//  }
+//  assert(kmer_idx == nkmers);
+//  auto end = std::chrono::system_clock::now();
+//  auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+//  keyvTime += elapsed.count();
+//
+//  vector<int> slct_seed_idx = findBestIndices(cnt, nkmers_slct);
+//
+//  if (nseed_freq > nkmers / 2)
+//    high_freq = true;
+//
+//  for (size_t i = 0; i < nkmers; i++) {
+//    if (is_selected_seed(high_freq, max_occ, cnt[i], i, slct_seed_idx))
+//      ntotal_hits += (e[i] - b[i]);
+//  }
+//
+//  // if we have no hits, we are done
+//  if (!ntotal_hits)
+//    return;
+//
+//  uint32_t top_pos[nkmers];
+//  int rel_off[nkmers];
+//  uint32_t MAX_POS = numeric_limits<uint32_t>::max();
+//
+//  start = std::chrono::system_clock::now();
+//  // initialize top values with first values for each kmer.
+//  for (unsigned i = 0; i < nkmers; i++) {
+//    if (b[i] < e[i] && is_selected_seed(high_freq, max_occ, cnt[i], i, slct_seed_idx)) {
+//      top_pos[i] = get_posv(ref_id)[b[i]];
+//      rel_off[i] = i * kmer_step;
+//      uint32_t shift_pos = rel_off[i] + ori_slide_bk;
+//      //TODO: for each chrome, happen to < the start pos
+//      if (top_pos[i] < shift_pos)
+//        top_pos[i] = 0; // there is insertion before this kmer
+//      else
+//        top_pos[i] -= shift_pos;
+//    } else {
+//      top_pos[i] = MAX_POS;
 //    }
-    kmer_idx++;
-  }
-  assert(kmer_idx == nkmers);
-  auto end = std::chrono::system_clock::now();
-  auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-  keyvTime += elapsed.count();
+//  }
+//  end = std::chrono::system_clock::now();
+//  elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+//  posvTime += elapsed.count();
+//
+//  size_t nprocessed = 0;
+//  uint32_t last_pos = MAX_POS, last_qs = ori_slide_bk; //last query start pos
+//  int last_cov = 0;
+//
+//  start = std::chrono::system_clock::now();
+//
+//  vector<Region> unique_regions;
+//  unique_regions.reserve(ntotal_hits);
+//  size_t idx = 0;
+//  Region r;
+//  r.matched_intervals.reserve(nkmers);
+////  Region unique_regions[ntotal_hits];
+////  size_t idx = 0;
+////  Region *r = unique_regions + idx;
+//
+//  while (nprocessed < ntotal_hits) {
+//    //find min
+//    uint32_t *min_item = min_element(top_pos, top_pos + nkmers);
+//    uint32_t min_pos = *min_item;
+//    int min_kmer = min_item - top_pos;
+//
+//    if (is_selected_seed(high_freq, max_occ, cnt[min_kmer], min_kmer, slct_seed_idx)) {
+//      // kick off prefetch for next round
+//      __builtin_prefetch(get_posv(ref_id) + b[min_kmer] + 1);
+//
+//      // if previous min element was same as current one, increment coverage.
+//      // otherwise, check if last min element's coverage was high enough to make it a candidate region
+//
+//      if (min_pos == last_pos) {
+//        merge_interval(r, last_qs, kmer_len);
+////        r.matched_intervals.push_back(Interval{last_qs, last_qs + kmer_len});
+//        last_cov++;
+//      } else {
+//        if (nprocessed != 0) {
+//          r.cov = last_cov;
+//          r.rs = last_pos;
+//          merge_interval(r, last_qs, kmer_len);
+//          extend_interval( r, Q,  rlen,  ref_id);
+////          r.matched_intervals.push_back(Interval{last_qs, last_qs + kmer_len});
+//          r.qs = r.matched_intervals[0].s; //the first match seed, so left extension could be accurate
+//          r.qe = r.matched_intervals[0].e;
+//
+//          if (last_cov > max_cov)
+//            max_cov = last_cov;
+//
+//          assert(r.rs != MAX_POS && r.rs < MAX_POS);
+//          unique_regions.push_back(move(r));
+//          ++idx;
+////          r =  unique_regions + idx;
+//        }
+//
+//        last_cov = 1;
+//      }
+//      last_qs = min_kmer * kmer_step + ori_slide_bk;
+//      last_pos = min_pos;
+//    }
+//
+//    // add next element
+//    b[min_kmer]++;
+//    uint32_t next_pos = b[min_kmer] < e[min_kmer] ? get_posv(ref_id)[b[min_kmer]] : MAX_POS;
+//    if (next_pos != MAX_POS) {
+//      uint32_t shift_pos = rel_off[min_kmer] + ori_slide_bk;
+//      //TODO: for each chrome, happen to < the start pos
+//      if (next_pos < shift_pos)
+//        *min_item = 0; // there is insertion before this kmer
+//      else
+//        *min_item = next_pos - shift_pos;
+//    } else
+//      *min_item = MAX_POS;
+//
+//    ++nprocessed;
+//  }
+//
+//  // we will have the last few positions not processed. check here.
+//  if (last_pos != MAX_POS) {
+//    r.cov = last_cov;
+//    r.rs = last_pos;
+//    merge_interval(r, last_qs, kmer_len);
+//    extend_interval( r, Q,  rlen,  ref_id);
+////    r.matched_intervals.push_back(Interval{last_qs, last_qs + kmer_len});
+//    r.qs = r.matched_intervals[0].s; //the first match seed, so left extension could be accurate
+//    r.qe = r.matched_intervals[0].e;
+//
+//    if (last_cov > max_cov)
+//      max_cov = last_cov;
+//
+//    assert(r.rs != MAX_POS && r.rs < MAX_POS);
+//    unique_regions.push_back(move(r));
+//    ++idx;
+//  }
+//
+//  err_threshold = max(err_threshold, max_cov - 1);
+//  assert(idx <= ntotal_hits);
+//  for (size_t i = 0; i < idx; i++) {
+//    Region &r = unique_regions[i];
+//    if (r.cov >= err_threshold) {
+//      if (r.cov == max_cov)
+//        best = candidate_regions.size();
+//
+//      candidate_regions.push_back(move(r));
+//    }
+//  }
+//
+//  end = std::chrono::system_clock::now();
+//  elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+//  hit_count_time += elapsed.count();
+//}
 
-  if (nseed_freq > nkmers / 2)
-    high_freq = true;
-
-  for (size_t i = 0; i < nkmers; i++) {
-    if ((!high_freq && e[i] - b[i] < max_occ) || high_freq)
-      ntotal_hits += (e[i] - b[i]);
-  }
-
-  // if we have no hits, we are done
-  if (!ntotal_hits)
-    return;
-
-  start = std::chrono::system_clock::now();
-  // initialize top values with first values for each kmer.
-  uint32_t MAX_POS = numeric_limits<uint32_t>::max();
-  vector<Region> regions;
-  regions.reserve(ntotal_hits);
-  for (unsigned i = 0; i < nkmers; i++) {
-    if (b[i] < e[i] && ((!high_freq && e[i] - b[i] < max_occ) || high_freq)) {
-//    if (b[i] < e[i] && e[i] - b[i] < max_occ) {
-      for (uint32_t j = b[i]; j < e[i]; j++) {
-        Region r;
-        r.rs = get_posv(ref_id)[j];
-        r.qs = i * kmer_step + ori_slide;
-        r.rs -= min(r.rs, r.qs);
-        regions.push_back(r);
-        // rs can't be samller than 0, if insertion before this kmer, set rs to 0 instead of -1
-      }
-    }
-  }
-  assert(regions.size() == ntotal_hits);
-  end = std::chrono::system_clock::now();
-  elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-  posvTime += elapsed.count();
-
-  start = std::chrono::system_clock::now();
-
-  sort(regions.begin(), regions.end(), Region());
-
-  size_t nprocessed = 0, last_cov = 0;
-  uint32_t last_pos = MAX_POS;
-
-  while (nprocessed < ntotal_hits) {
-
-    if (regions[nprocessed].rs == last_pos) {
-      last_cov++;
-    } else {
-      if (last_cov >= err_threshold) {
-        Region r;
-        r.cov = last_cov;
-        r.rs = last_pos;
-        for (unsigned i = nprocessed - last_cov; i < nprocessed; i++)
-          r.matched_intervals.push_back(Interval{regions[i].qs, regions[i].qs + kmer_len});
-        r.qs = r.matched_intervals[0].s; //the first match seed, so left extension could be accurate
-        r.qe = r.qs + kmer_len;
-
-        assert(r.rs < MAX_POS);
-
-        if (last_cov >= max_cov) {
-          max_cov = last_cov;
-          best = candidate_regions.size();
-        }
-        candidate_regions.push_back(r);
-      }
-      last_cov = 1;
-    }
-    last_pos = regions[nprocessed].rs;
-
-    ++nprocessed;
-  }
-
-  // we will have the last few positions not processed. check here.
-  if (last_cov >= err_threshold && last_pos != MAX_POS) {
-    Region r;
-    r.cov = last_cov;
-    r.rs = last_pos;
-    for (unsigned i = nprocessed - last_cov; i < nprocessed; i++)
-      r.matched_intervals.push_back(Interval{regions[i].qs, regions[i].qs + kmer_len});
-    r.qs = r.matched_intervals[0].s; //the first match seed, so left extension could be accurate
-    r.qe = r.qs + kmer_len;
-    assert(r.rs < MAX_POS);
-
-    if (last_cov >= max_cov) {
-      max_cov = last_cov;
-      best = candidate_regions.size();
-    }
-    candidate_regions.push_back(r);
-  }
-
-  end = std::chrono::system_clock::now();
-  elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-  posvTime += elapsed.count();
-}
+//void AccAlign::pigeonhole_query_sort(char *Q,
+//                                     size_t rlen,
+//                                     vector<Region> &candidate_regions,
+//                                     char S,
+//                                     unsigned err_threshold,
+//                                     unsigned kmer_step,
+//                                     unsigned max_occ,
+//                                     unsigned &best,
+//                                     unsigned ori_slide,
+//                                     int ref_id) {
+//  unsigned max_cov = 0;
+//  unsigned nkmers = (rlen - ori_slide - kmer_len) / kmer_step + 1;
+//  size_t ntotal_hits = 0;
+//  size_t b[nkmers], e[nkmers];
+//  unsigned kmer_idx = 0;
+//  unsigned nseed_freq = 0;
+//  bool high_freq = false;
+//
+//  // Take non-overlapping seeds and find all hits
+//  auto start = std::chrono::system_clock::now();
+//  for (size_t i = ori_slide; i + kmer_len <= rlen; i += kmer_step) {
+//    uint64_t k = 0;
+//    for (size_t j = i; j < i + kmer_len; j++)
+//      k = (k << 2) + *(Q + j);
+//    size_t hash = (k & mask) % MOD;
+//    b[kmer_idx] = get_keyv(ref_id)[hash];
+//    e[kmer_idx] = get_keyv(ref_id)[hash + 1];
+//    if (e[kmer_idx] - b[kmer_idx] >= max_occ)
+//      nseed_freq++;
+////    if (e[kmer_idx] - b[kmer_idx] < max_occ) {
+////      ntotal_hits += (e[kmer_idx] - b[kmer_idx]);
+////    }
+//    kmer_idx++;
+//  }
+//  assert(kmer_idx == nkmers);
+//  auto end = std::chrono::system_clock::now();
+//  auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+//  keyvTime += elapsed.count();
+//
+//  if (nseed_freq > nkmers / 2)
+//    high_freq = true;
+//
+//  for (size_t i = 0; i < nkmers; i++) {
+//    if ((!high_freq && e[i] - b[i] < max_occ) || high_freq)
+//      ntotal_hits += (e[i] - b[i]);
+//  }
+//
+//  // if we have no hits, we are done
+//  if (!ntotal_hits)
+//    return;
+//
+//  start = std::chrono::system_clock::now();
+//  // initialize top values with first values for each kmer.
+//  uint32_t MAX_POS = numeric_limits<uint32_t>::max();
+//  vector<Region> regions;
+//  regions.reserve(ntotal_hits);
+//  for (unsigned i = 0; i < nkmers; i++) {
+//    if (b[i] < e[i] && ((!high_freq && e[i] - b[i] < max_occ) || high_freq)) {
+////    if (b[i] < e[i] && e[i] - b[i] < max_occ) {
+//      for (uint32_t j = b[i]; j < e[i]; j++) {
+//        Region r;
+//        r.rs = get_posv(ref_id)[j];
+//        r.qs = i * kmer_step + ori_slide;
+//        r.rs -= min(r.rs, r.qs);
+//        regions.push_back(r);
+//        // rs can't be samller than 0, if insertion before this kmer, set rs to 0 instead of -1
+//      }
+//    }
+//  }
+//  assert(regions.size() == ntotal_hits);
+//  end = std::chrono::system_clock::now();
+//  elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+//  posvTime += elapsed.count();
+//
+//  start = std::chrono::system_clock::now();
+//
+//  sort(regions.begin(), regions.end(), Region());
+//
+//  size_t nprocessed = 0, last_cov = 0;
+//  uint32_t last_pos = MAX_POS;
+//
+//  while (nprocessed < ntotal_hits) {
+//
+//    if (regions[nprocessed].rs == last_pos) {
+//      last_cov++;
+//    } else {
+//      if (last_cov >= err_threshold) {
+//        Region r;
+//        r.cov = last_cov;
+//        r.rs = last_pos;
+//        for (unsigned i = nprocessed - last_cov; i < nprocessed; i++)
+//          r.matched_intervals.push_back(Interval{regions[i].qs, regions[i].qs + kmer_len});
+//        r.qs = r.matched_intervals[0].s; //the first match seed, so left extension could be accurate
+//        r.qe = r.qs + kmer_len;
+//
+//        assert(r.rs < MAX_POS);
+//
+//        if (last_cov >= max_cov) {
+//          max_cov = last_cov;
+//          best = candidate_regions.size();
+//        }
+//        candidate_regions.push_back(r);
+//      }
+//      last_cov = 1;
+//    }
+//    last_pos = regions[nprocessed].rs;
+//
+//    ++nprocessed;
+//  }
+//
+//  // we will have the last few positions not processed. check here.
+//  if (last_cov >= err_threshold && last_pos != MAX_POS) {
+//    Region r;
+//    r.cov = last_cov;
+//    r.rs = last_pos;
+//    for (unsigned i = nprocessed - last_cov; i < nprocessed; i++)
+//      r.matched_intervals.push_back(Interval{regions[i].qs, regions[i].qs + kmer_len});
+//    r.qs = r.matched_intervals[0].s; //the first match seed, so left extension could be accurate
+//    r.qe = r.qs + kmer_len;
+//    assert(r.rs < MAX_POS);
+//
+//    if (last_cov >= max_cov) {
+//      max_cov = last_cov;
+//      best = candidate_regions.size();
+//    }
+//    candidate_regions.push_back(r);
+//  }
+//
+//  end = std::chrono::system_clock::now();
+//  elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+//  posvTime += elapsed.count();
+//}
 
 void AccAlign::pghole_wrapper(Read &R,
                               vector<Region> &fcandidate_regions,
@@ -801,15 +801,15 @@ void AccAlign::pghole_wrapper(Read &R,
 
       unsigned nkmers = (rlen - ori_slide - kmer_len) / kmer_step + 1;
 
-    if (nkmers < 4) {
+//    if (nkmers < 4) {
       //nkmer 3, 2, 1, top 2 cov of cov >=2, is 3, 2, is as same as cov>=2
       // as cov2 is faster than top2, use cov2
       pigeonhole_query(R.fwd, rlen, fcandidate_regions, '+', fbest, ori_slide, 2, kmer_step, MAX_OCC, high_freq, ref_id);
       pigeonhole_query(R.rev, rlen, rcandidate_regions, '-', rbest, ori_slide, 2, kmer_step, MAX_OCC, high_freq, ref_id);
-    } else {
-      pigeonhole_query_topcov(R.fwd, rlen, fcandidate_regions, '+', 2, kmer_step, MAX_OCC, fbest, ori_slide, ref_id);
-      pigeonhole_query_topcov(R.rev, rlen, rcandidate_regions, '-', 2, kmer_step, MAX_OCC, rbest, ori_slide, ref_id);
-    }
+//    } else {
+//      pigeonhole_query_topcov(R.fwd, rlen, fcandidate_regions, '+', 2, kmer_step, MAX_OCC, fbest, ori_slide, ref_id);
+//      pigeonhole_query_topcov(R.rev, rlen, rcandidate_regions, '-', 2, kmer_step, MAX_OCC, rbest, ori_slide, ref_id);
+//    }
       nfregions = fcandidate_regions.size();
       nrregions = rcandidate_regions.size();
 
@@ -871,28 +871,6 @@ void AccAlign::find_candidate_positions_using_strobealign(char *seq, vector<Regi
   //TODO merge and extend the interval...
 }
 
-// if last_q_pos is in range of match_interval, merge them togeter; k is the length of the interval (kmer_len)
-void AccAlign::merge_interval(Region &r, uint32_t last_q_pos, int32_t k) {
-  if (g_stype==SType::Minimizer)
-    last_q_pos = (last_q_pos >> 1) - k + 1; //q_pos format: pos << 1 | z
-
-  vector<Interval> &match_interval = r.matched_intervals;
-
-  if (!r.matched_intervals.size())
-    match_interval.push_back(Interval{last_q_pos, last_q_pos + k});
-
-  for (Interval &interval: match_interval) {
-    if (last_q_pos >= interval.s && last_q_pos <= interval.e) {
-      interval.e = last_q_pos + k;
-      return;
-    }
-  }
-
-  //no overlap, new interval
-  match_interval.push_back(Interval{last_q_pos, last_q_pos + k});
-  return;
-}
-
 void AccAlign::extend_interval(Region &r, char*Q, int rlen, int ref_id) {
   for (size_t i = 0; i < r.matched_intervals.size(); ++i) {
     Interval &interval = r.matched_intervals[i];
@@ -913,7 +891,6 @@ void AccAlign::extend_interval(Region &r, char*Q, int rlen, int ref_id) {
       }
     }
   }
-
 }
 
 //rid<<32 | lastPos<<1 | strand
@@ -1083,12 +1060,12 @@ void AccAlign::collect_seed_hits_priorityqueue(int n_m0,
     // if previous min element was same as current one, increment coverage.
     // otherwise, check if last min element's coverage was high enough to make it a candidate region
     if (min_pos == last_pos) {
-      merge_interval(r, last_q_pos, k);
+      r.merge_interval(g_stype, last_q_pos, k);
       ++last_cov;
     } else {
       if (last_cov >= err_threshold) {
         r.cov = last_cov;
-        merge_interval(r, last_q_pos, k);
+        r.merge_interval(g_stype, last_q_pos, k);
         r.qs = r.matched_intervals[0].s; //let it be the first match seed, so the left extension could be accurate
         r.qe = r.matched_intervals[0].e;
         r.rs = get_global_pos(last_pos, ref_id);
@@ -1130,7 +1107,7 @@ void AccAlign::collect_seed_hits_priorityqueue(int n_m0,
   if (last_pos != MAX_POS) {
     if (last_cov >= err_threshold) {
       r.cov = last_cov;
-      merge_interval(r, last_q_pos, k);
+      r.merge_interval(g_stype, last_q_pos, k);
       r.qs = r.matched_intervals[0].s; //let it be the first match seed, so the left extension could be accurate
       r.qe = r.matched_intervals[0].e;
       r.rs = get_global_pos(last_pos, ref_id);
@@ -1332,14 +1309,14 @@ void AccAlign::pigeonhole_query(char *Q,
       // if previous min element was same as current one, increment coverage.
       // otherwise, check if last min element's coverage was high enough to make it a candidate region
       if (min_pos == last_pos) {
-        merge_interval(r, last_qs, kmer_len);
+        r.merge_interval(g_stype, last_qs, kmer_len);
 //        r.matched_intervals.push_back(Interval{last_qs, last_qs + kmer_len});
         last_cov++;
       } else {
         if (last_cov >= err_threshold) {
           r.cov = last_cov;
           r.rs = last_pos;
-          merge_interval(r, last_qs, kmer_len);
+          r.merge_interval(g_stype, last_qs, kmer_len);
           extend_interval( r, Q,  rlen,  ref_id);
 //          r.matched_intervals.push_back(Interval{last_qs, last_qs + kmer_len});
           r.qs = r.matched_intervals[0].s; //let it be the first match seed, so the left extension could be accurate
@@ -1378,7 +1355,7 @@ void AccAlign::pigeonhole_query(char *Q,
     if (last_cov >= err_threshold) {
       r.cov = last_cov;
       r.rs = last_pos;
-      merge_interval(r, last_qs, kmer_len);
+      r.merge_interval(g_stype, last_qs, kmer_len);
       extend_interval( r, Q,  rlen,  ref_id);
 //      r.matched_intervals.push_back(Interval{last_qs, last_qs + kmer_len});
       r.qs = r.matched_intervals[0].s; //let it be the first match seed, so the left extension could be accurate
