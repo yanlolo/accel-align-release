@@ -59,6 +59,28 @@ struct Region {
     return;
   }
 
+  void extend_interval(const char*ref, char*Q, int rlen) {
+    for (size_t i = 0; i < matched_intervals.size(); ++i) {
+      Interval &interval = matched_intervals[i];
+
+      size_t left = i == 0 ? 0 : matched_intervals[i - 1].e;
+      for(size_t j = 0; j + left < interval.s; ++j){
+        if (Q[interval.s - j] != ref[rs + interval.s - j]){
+          interval.s = interval.s - j + 1;
+          break;
+        }
+      }
+
+      size_t right = i == matched_intervals.size() - 1 ? rlen : matched_intervals[i + 1].s;
+      for(size_t j = 0; interval.e + j < right; ++j){
+        if (Q[interval.e + j] != ref[rs + interval.e + j]){
+          interval.e = interval.e + j - 1;
+          break;
+        }
+      }
+    }
+  }
+
 };
 
 struct Read {

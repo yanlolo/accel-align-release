@@ -871,27 +871,6 @@ void AccAlign::find_candidate_positions_using_strobealign(char *seq, vector<Regi
   //TODO merge and extend the interval...
 }
 
-void AccAlign::extend_interval(Region &r, char*Q, int rlen, int ref_id) {
-  for (size_t i = 0; i < r.matched_intervals.size(); ++i) {
-    Interval &interval = r.matched_intervals[i];
-
-    size_t left = i == 0 ? 0 : r.matched_intervals[i - 1].e;
-    for(size_t j = 0; j + left < interval.s; ++j){
-      if (Q[interval.s - j] != get_ref(ref_id).c_str()[r.rs + interval.s - j]){
-        interval.s = interval.s - j + 1;
-        break;
-      }
-    }
-
-    size_t right = i == r.matched_intervals.size() - 1 ? rlen : r.matched_intervals[i + 1].s;
-    for(size_t j = 0; interval.e + j < right; ++j){
-      if (Q[interval.e + j] != get_ref(ref_id).c_str()[r.rs + interval.e + j]){
-        interval.e = interval.e + j - 1;
-        break;
-      }
-    }
-  }
-}
 
 //rid<<32 | lastPos<<1 | strand
 //where lastPos is the position of the last base of the i-th minimizer,
@@ -1317,7 +1296,7 @@ void AccAlign::pigeonhole_query(char *Q,
           r.cov = last_cov;
           r.rs = last_pos;
           r.merge_interval(g_stype, last_qs, kmer_len);
-          extend_interval( r, Q,  rlen,  ref_id);
+          r.extend_interval(get_ref(ref_id).c_str(), Q,  rlen);
 //          r.matched_intervals.push_back(Interval{last_qs, last_qs + kmer_len});
           r.qs = r.matched_intervals[0].s; //let it be the first match seed, so the left extension could be accurate
           r.qe = r.matched_intervals[0].e;
@@ -1356,7 +1335,7 @@ void AccAlign::pigeonhole_query(char *Q,
       r.cov = last_cov;
       r.rs = last_pos;
       r.merge_interval(g_stype, last_qs, kmer_len);
-      extend_interval( r, Q,  rlen,  ref_id);
+      r.extend_interval(get_ref(ref_id).c_str(), Q,  rlen);
 //      r.matched_intervals.push_back(Interval{last_qs, last_qs + kmer_len});
       r.qs = r.matched_intervals[0].s; //let it be the first match seed, so the left extension could be accurate
       r.qe = r.matched_intervals[0].e;
