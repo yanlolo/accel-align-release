@@ -29,7 +29,7 @@ struct Region {
   uint32_t qs, qe;  // start, end position of matched seed in the query (read)
   uint16_t cov;
   uint16_t embed_dist;
-  int as;
+  int as, score = 0;
   std::vector<Interval> matched_intervals;  // list of start pos of matched seeds in read that indicate to this region
 
   bool operator()(Region &X, Region &Y) {
@@ -61,13 +61,15 @@ struct Region {
   void extend_interval(const char*ref, char*Q, int rlen) {
     for (size_t i = 0; i < matched_intervals.size(); ++i) {
       Interval &interval = matched_intervals[i];
+      score += interval.e - interval.s;
 
       size_t left = i == 0 ? 0 : matched_intervals[i - 1].e;
       for(size_t j = 0; j + left < interval.s; ++j){
         if (Q[interval.s - j] != ref[rs + interval.s - j]){
           interval.s = interval.s - j + 1;
           break;
-        }
+        } else
+          score += 1;
       }
 
       size_t right = i == matched_intervals.size() - 1 ? rlen : matched_intervals[i + 1].s;
@@ -75,9 +77,12 @@ struct Region {
         if (Q[interval.e + j] != ref[rs + interval.e + j]){
           interval.e = interval.e + j - 1;
           break;
-        }
+        } else
+          score += 1;
       }
     }
+
+    score *= cov;
   }
 
 };

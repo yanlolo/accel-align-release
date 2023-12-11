@@ -1197,7 +1197,7 @@ void AccAlign::fetch_candidates(mm128_v &mv, int32_t mid_occ, size_t rlen, int e
 
 void AccAlign::pigeonhole_query(char *Q,
                                 size_t rlen,
-                                vector<Region> &candidate_regions,
+                                vector<Region> &res,
                                 char S,
                                 unsigned &best,
                                 unsigned ori_slide,
@@ -1205,6 +1205,8 @@ void AccAlign::pigeonhole_query(char *Q,
                                 unsigned kmer_step,
                                 unsigned max_occ,
                                 bool &high_freq, int ref_id) {
+  vector<Region> candidate_regions;
+
   int max_cov = 0;
   unsigned nkmers = (rlen - ori_slide - kmer_len) / kmer_step + 1;
   unsigned nkmers_slct = (rlen - ori_slide - kmer_len) / kmer_len + 1;
@@ -1348,6 +1350,33 @@ void AccAlign::pigeonhole_query(char *Q,
       assert(r.rs < MAX_POS);
       candidate_regions.push_back(move(r));
     }
+  }
+
+  if (candidate_regions.size() < 10){
+    res.reserve(candidate_regions.size());
+    for (auto i = 0; i < candidate_regions.size(); ++i) {
+      res.push_back(candidate_regions[i]);
+    }
+  } else{
+    std::sort(candidate_regions.begin(), candidate_regions.end(), [](const Region &a, const Region &b) {
+      return a.score > b.score; // '>' for descending order
+    });
+
+    // Calculate the number of elements to keep (10% of the vector size)
+    int elementsToKeep = 0;
+    if (candidate_regions.size() < 100)
+      elementsToKeep = 10;
+    else
+      elementsToKeep = candidate_regions.size() / 10;
+
+    res.reserve(elementsToKeep);
+    for (auto i = 0; i < candidate_regions.size(); ++i) {
+      res.push_back(candidate_regions[i]);
+    }
+
+    std::sort(res.begin(), res.end(), [](const Region &a, const Region &b) {
+      return a.rs < b.rs; // '<' for asc order
+    });
   }
 
   end = std::chrono::system_clock::now();
@@ -1678,13 +1707,13 @@ void AccAlign::map_read(Read &R, int ref_id) {
     R.strand = strand;
   } else {
     start = std::chrono::system_clock::now();
-    // before doing embedding, move highest cov region to front
-    if (nfregions > 1 && fbest != 0) {
-      iter_swap(fcandidate_regions.begin() + fbest, fcandidate_regions.begin());
-    }
-    if (nrregions > 1 && rbest != 0) {
-      iter_swap(rcandidate_regions.begin() + rbest, rcandidate_regions.begin());
-    }
+//    // before doing embedding, move highest cov region to front
+//    if (nfregions > 1 && fbest != 0) {
+//      iter_swap(fcandidate_regions.begin() + fbest, fcandidate_regions.begin());
+//    }
+//    if (nrregions > 1 && rbest != 0) {
+//      iter_swap(rcandidate_regions.begin() + rbest, rcandidate_regions.begin());
+//    }
     end = std::chrono::system_clock::now();
     elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
     swap_time += elapsed.count();
