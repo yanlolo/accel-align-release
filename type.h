@@ -47,11 +47,10 @@ struct Region {
     if (!matched_intervals.size())
       matched_intervals.push_back(Interval{last_q_pos, last_q_pos + k});
 
-    for (Interval &interval: matched_intervals) {
-      if (last_q_pos >= interval.s && last_q_pos <= interval.e) {
-        interval.e = last_q_pos + k;
-        return;
-      }
+    Interval &interval = matched_intervals.back();
+    if (last_q_pos >= interval.s && last_q_pos <= interval.e) {
+      interval.e = last_q_pos + k;
+      return;
     }
 
     //no overlap, new interval
