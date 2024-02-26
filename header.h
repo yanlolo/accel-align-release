@@ -39,6 +39,7 @@
 
 #include "minimap.h"
 #include "mmpriv.h"
+#include "hash.hpp"
 
 extern "C" {
 #include "gap_affine/affine_wavefront_align.h"

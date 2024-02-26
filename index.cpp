@@ -30,8 +30,11 @@
 
 #include "header.h"
 using namespace std;
-const unsigned mod = (1UL << 29) - 1;
+uint64_t mod = MOD_29;    // default value is 2^29 - 1
+uint32_t mod_tmp;
 const unsigned step = 1;
+uint32_t xxh_type = 0;
+XXHash xxh;
 unsigned kmer;
 bool enable_idx_minimizer = false, enable_bs = false; //short for bisulfite reads
 struct Data {
@@ -50,6 +53,7 @@ class Index {
   bool make_index(const char *F, int id);
   void cal_key(size_t i, vector<Data> &data);
 };
+
 bool Index::load_ref(const char *F, char mode) {
   char code[256], buf[65536];
   for (size_t i = 0; i < 256; i++)
@@ -64,8 +68,10 @@ bool Index::load_ref(const char *F, char mode) {
     code['G'] = code['g'] = 0;
   cerr << "Loading ref\n";
   FILE *f = fopen(F, "rb");
-  if (f == NULL)
+  if (f == NULL){
+    printf("Error: File '%s' not found.\n", F);
     return false;
+  }
   fseek(f, 0, SEEK_END);
   ref.reserve(ftell(f) + 1);
   fclose(f);
@@ -83,6 +89,7 @@ bool Index::load_ref(const char *F, char mode) {
   cerr << "genome\t" << ref.size() << '\n';
   return true;
 }
+
 void Index::cal_key(size_t i, vector<Data> &data) {
   uint64_t h = 0;
   bool hasn = false;
@@ -93,7 +100,7 @@ void Index::cal_key(size_t i, vector<Data> &data) {
     h = (h << 2) + ref[i + j];
   }
   if (!hasn) {
-    data[i / step].key = h % mod;
+    data[i / step].key = uint32_t(xxh(&h) % mod);
     data[i / step].pos = i;
   }
 }
@@ -118,6 +125,7 @@ bool Index::make_index(const char *F, int id) {
     vsz = ref.size() / step + 1;
   vector<Data> data(vsz, Data());
   cerr << "hashing :limit = " << limit << ", vsz = " << vsz << endl;
+  cerr << "using MOD = " << mod << " and XXH = " << xxh_type << endl;
   tbb::parallel_for(tbb::blocked_range<size_t>(0, limit), Tbb_cal_key(data, this));
   cerr << "hash\t" << data.size() << endl;
   //XXX: Parallel sort uses lots of memory. Need to fix this. In general, we
@@ -126,24 +134,29 @@ bool Index::make_index(const char *F, int id) {
     cerr << "Attempting parallel sorting\n";
     tbb::task_scheduler_init init(tbb::task_scheduler_init::automatic);
     tbb::parallel_sort(data.begin(), data.end(), Data());
-  } catch (std::bad_alloc e) {
+  } catch (std::bad_alloc &e) {
     cerr << "Fall back to serial sorting (low mem)\n";
     sort(data.begin(), data.end(), Data());
   }
   cerr << "writing\n";
   string fn = F;
   if (id)
-    fn += ".hash.part" + to_string(id);
+    fn += ".hash" + to_string(kmer) + ".part" + to_string(id);
   else
-    fn += ".hash";
+    fn += ".hash" + to_string(kmer);
   ofstream fo(fn.c_str(), ios::binary);
   // determine the number of valid entries based on first junk entry
   auto joff = std::lower_bound(data.begin(), data.end(), Data(-1, -1), Data());
   size_t eof = joff - data.begin();
   cerr << "Found " << eof << " valid entries out of " <<
        data.size() << " total\n";
+  // first, write mod
+  fo.write((char *) &mod, 4);
+  // then, write xxh_type
+  fo.write((char *) &xxh_type, 4);
+  // then, write the number of positions
   fo.write((char *) &eof, 4);
-  // write out keys
+  // write out positions
   for (size_t i = eof; i < data.size(); i++)
     assert(data[i].key == (uint32_t) -1);
   try {
@@ -154,19 +167,22 @@ bool Index::make_index(const char *F, int id) {
     }
     fo.write((char *) buf, eof * sizeof(uint32_t));
     delete[] buf;
-  } catch (std::bad_alloc e) {
+  } catch (std::bad_alloc &e) {
     cerr << "Fall back to slow writing posv due to low mem.\n";
     for (size_t i = 0; i < eof; i++) {
       fo.write((char *) &data[i].pos, 4);
     }
   }
+
+  // write out keys
   size_t last_key = 0, offset;
   try {
     cerr << "Fast writing keyv\n";
-    size_t buf_idx = 0;
+    uint64_t buf_idx = 0;
     uint32_t *buf = new uint32_t[mod + 1];
+    // for each position
     for (size_t i = 0; i < eof;) {
-      assert (data[i].key != (uint32_t) -1);
+      assert (data[i].pos != (uint32_t) -1);
       size_t h = data[i].key, n;
       offset = i;
       for (size_t j = last_key; j <= h; j++) {
@@ -178,17 +194,17 @@ bool Index::make_index(const char *F, int id) {
       i = n;
     }
     offset = eof;
-    for (size_t j = last_key; j <= mod; j++) {
+    for (uint64_t j = (uint64_t) last_key; j <= mod; j++) {
       buf[buf_idx] = offset;
       ++buf_idx;
     }
     assert(buf_idx == (mod + 1));
     fo.write((char *) buf, buf_idx * sizeof(uint32_t));
     delete[] buf;
-  } catch (std::bad_alloc e) {
+  } catch (std::bad_alloc &e) {
     cerr << "Fall back to slow writing keyv (low mem)\n";
     for (size_t i = 0; i < eof;) {
-      assert (data[i].key != (uint32_t) -1);
+      assert (data[i].pos != (uint32_t) -1);
       size_t h = data[i].key, n;
       offset = i;
       for (size_t j = last_key; j <= h; j++) {
@@ -199,7 +215,7 @@ bool Index::make_index(const char *F, int id) {
       i = n;
     }
     offset = eof;
-    for (size_t j = last_key; j <= mod; j++) {
+    for (uint64_t j = (uint64_t) last_key; j <= mod; j++) {
       fo.write((char *) &offset, 4);
     }
   }
@@ -515,7 +531,7 @@ int run_strobealign(int argc, char **argv) {
 int main(int ac, char **av) {
   int opn = 1;
 
-  if (std::string(av[opn]) == "--strobe-mode") {
+  if (av[opn] != nullptr && std::string(av[opn]) == "--strobe-mode") {
       try {
         return run_strobealign(ac, av);
       } catch (BadParameter& e) {
@@ -529,6 +545,10 @@ int main(int ac, char **av) {
       cerr << "index [options] <ref.fa>\n";
       cerr << "options:\n";
       cerr << "\t-l INT length of seed [32]\n";
+      cerr << "\t-h INT value of hash MOD [2^29-1]\n";
+      cerr << "\t   Special string values = 2^29-1, 2^32, prime, lprime\n";
+      cerr << "\t-x INT size of xxhash [0]\n";
+      cerr << "\t   Values = 0 (xxh not used), 32, 64\n";
       cerr << "\t-m enable minimizer\n";
       cerr << "\t-k minimizer: k, kmer size \n";
       cerr << "\t-w minimizer: w, window size \n";
@@ -549,8 +569,39 @@ int main(int ac, char **av) {
         mm_w_tmp = atoi(av[it + 1]);
       else if (strcmp(av[it], "-s") == 0)
         enable_bs = true;
+      else if (strcmp(av[it], "-h") == 0) {
+        // check for special string values
+        if (strcmp(av[it+1], "2^29") == 0 || strcmp(av[it+1], "2^29-1") == 0)
+          mod = MOD_29;
+        else if (strcmp(av[it+1], "2^32") == 0)
+          mod = MOD_32;
+        else if (strcmp(av[it+1], "prime") == 0)
+          mod = MOD_PRIME;
+        else if (strcmp(av[it+1], "lprime") == 0)
+          mod = MOD_LPRIME;
+          // now do classic conversion
+        else try {
+            mod_tmp = stoul(string(av[it+1]));
+            mod = static_cast<uint64_t>(mod_tmp);
+          } catch (const invalid_argument& e) {
+            cerr << "Invalid argument: " << e.what() << endl;
+            cerr << "Special string values for -h are 2^29-1, prime, lprime.\n";
+            exit(1);
+          } catch (const out_of_range& e) {
+            cerr << "Out of range: " << e.what() << endl;
+            exit(1);
+          }
+      }
+      else if (strcmp(av[it], "-x") == 0) {
+        xxh_type = atoi(av[it + 1]);
+        if (xxh_type!=0 && xxh_type!=32 && xxh_type!=64) {
+          cerr << "Unknown value for xxhash. \nSupported values: 0 (xxh not used), 32, 64.\n";
+          exit(1);
+        }
+      }
     }
     string fn = av[ac - 1]; //input ref file name
+    bind_xxhash(xxh_type, xxh);
 
     if (enable_idx_minimizer) {
       int n_threads = 3;
