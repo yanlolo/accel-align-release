@@ -160,10 +160,10 @@ void Reference::load_reference(const char *F){
   }
 }
 
-Reference::Reference(const char *F, bool _enable_minimizer, char _mode): enable_minimizer(_enable_minimizer), mode(_mode){
+Reference::Reference(const char *F, SType _g_stype, char _mode, bool load_accalign_index): g_stype(_g_stype), mode(_mode){
   auto start = std::chrono::system_clock::now();
 
-  if (enable_minimizer){
+  if (g_stype == SType::Minimizer){
     int n_threads = 3;
 
     mm_idxopt_t ipt;
@@ -176,11 +176,11 @@ Reference::Reference(const char *F, bool _enable_minimizer, char _mode): enable_
 
     load_reference(F);
   } else{
-    thread t(&Reference::load_index, this, F); // load index in parallel
-
     load_reference(F);
-
-    t.join(); // wait for index load to finish
+    if(load_accalign_index) {
+      thread t(&Reference::load_index, this, F); // load index in parallel
+      t.join(); // wait for index load to finish
+    }
   }
 
   auto end = std::chrono::system_clock::now();
@@ -189,7 +189,7 @@ Reference::Reference(const char *F, bool _enable_minimizer, char _mode): enable_
 }
 
 Reference::~Reference() {
-  if (enable_minimizer){
+  if (g_stype == SType::Minimizer){
     mm_idx_destroy(mi);
   } else {
     size_t posv_sz = (size_t) nposv * sizeof(uint32_t);
