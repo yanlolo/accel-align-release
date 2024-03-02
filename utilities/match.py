@@ -1,12 +1,12 @@
 from __future__ import division
 import pandas as pd, swifter, sys, csv
 
-ref_path = '/home/yiqing/yan/input/simulate/10m-se-1/sv-10m-100-se-align.sam'
-align_path = '/home/yiqing/yan/output/yiqing_hash.sam'
-output_path = '/home/yiqing/yan/output//accalign.csv'
-# ref_path = str(sys.argv[1])
-# align_path = str(sys.argv[2])
-# output_path = str(sys.argv[3])
+# ref_path = '/home/yiqing/yan/input/simulate/10m-se-1/sv-10m-100-se-align.sam'
+# align_path = '/home/yiqing/yan/output/yiqing_hash.sam'
+# output_path = '/home/yiqing/yan/output//accalign.csv'
+ref_path = str(sys.argv[1])
+align_path = str(sys.argv[2])
+output_path = str(sys.argv[3])
 
 with open(ref_path, 'r') as file:
     for ref_skip, line in enumerate(file):

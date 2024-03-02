@@ -12,12 +12,11 @@ in_dir=/home/yiqing/yan/input/simulate/10m-pe-1/
 out_dir=/home/yiqing/yan/output
 ref=/home/yiqing/data/fsva-hg37/hg37.fna
 
-$code_dir/accalign -l 32 -R -t 4 -o $out_dir/rmi.sam input_dir
-$ref $in_dir/read1.fastq $in_dir/read2.fastq
+$code_dir/accalign -l 32 -R -t 4 -o $out_dir/rmi.sam $ref \
+$in_dir/sv-10m-100-r1.fastq $in_dir/sv-10m-100-r2.fastq
 
 ## accuracy check
-python $code_dir/match.py $in_dir/sv-10m-100-se-align.sam $out_dir/yiqing_rmi.sam \
-$out_dir/release.csv  
+python $code_dir/match.py $in_dir/sv-10m-100-pe-align.sam $out_dir/rmi.sam $out_dir/rmi.csv  
 
 ```
 
