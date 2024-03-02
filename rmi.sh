@@ -188,7 +188,7 @@ fi
 ################################### SHARED OBJECT ###################################
 # Copy Makefile in the current directory
 if [ ! -e Makefile ]; then
-  cp "${BASE_DIR}/rmi/Makefile" .
+  cp "${BASE_DIR}/RMI/Makefile" .
 fi
 
 # make ! -> create the shared library

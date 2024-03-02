@@ -15,6 +15,7 @@ ref=/home/yiqing/data/fsva-hg37/hg37.fna
 $code_dir/accalign -l 32 -R -t 4 -o $out_dir/rmi.sam input_dir
 $ref $in_dir/read1.fastq $in_dir/read2.fastq
 
+## accuracy check
 python $code_dir/match.py $in_dir/sv-10m-100-se-align.sam $out_dir/yiqing_rmi.sam \
 $out_dir/release.csv  
 
