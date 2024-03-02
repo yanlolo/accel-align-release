@@ -1,29 +1,22 @@
 from __future__ import division
-
-import pandas as pd
-import swifter
-import sys
-import csv
-
+import pandas as pd, swifter, sys, csv
 
 ref_path = '/home/yiqing/yan/input/simulate/10m-se-1/sv-10m-100-se-align.sam'
 align_path = '/home/yiqing/yan/output/yiqing_hash.sam'
 output_path = '/home/yiqing/yan/output//accalign.csv'
-aligner = 'accalign'
-match = 10
-
 # ref_path = str(sys.argv[1])
 # align_path = str(sys.argv[2])
 # output_path = str(sys.argv[3])
-# aligner = str(sys.argv[4])
-# match = int(sys.argv[5])
 
 with open(ref_path, 'r') as file:
     for ref_skip, line in enumerate(file):
         if 'NM' in line:
+            rlen = len(line.split('\t')[9])
+            match = rlen / 10
             break
 
 print('Skipping the first ' + str(ref_skip) + ' lines in the reference file')
+print('Read length: ' + str(rlen) + ', at least match' + str(match))
 
 with open(align_path, 'r') as file:
     for align_skip, line in enumerate(file):
@@ -31,6 +24,7 @@ with open(align_path, 'r') as file:
             break
 
 print('Skipping the first ' + str(align_skip) + ' lines in the aligned SAM')
+
 
 colName = ["QNAME", "FLAG", "RNAME", "POS"]
 colIndex = [0, 1, 2, 3]
@@ -44,9 +38,8 @@ align = pd.read_csv(align_path, sep = "\t", header = None, skiprows = align_skip
 align["QNAME"] = align["QNAME"].str.split('/').str[0]
 
 ## specially for minimap2, because it will produce multiple aligned places in sam file for one read
-if aligner == "minimap2":
+if len(ref) != len(align):
     align = align.groupby('QNAME').head(2).reset_index(drop=True)
-
 
 aligned = align[align["RNAME"]!="*"]
 
