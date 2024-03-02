@@ -27,7 +27,7 @@ unsigned pairdis = 1000;
 string g_out, g_batch_file, g_embed_file;
 char rcsymbol[6] = "TGCAN";
 uint8_t code[256];
-bool enable_extension = true, enable_wfa_extension = false, extend_all = false, enable_bs = false;
+bool enable_extension = true, enable_wfa_extension = false, extend_all = false, enable_bs = false, enable_minimizer = false;
 int enable_rmi = 0, enable_hash = 0, enable_bin = 0;
 
 //enable_minimizer = false, enable_strobealign_extension = false
@@ -3158,175 +3158,156 @@ std::string sam_header(const References& references, const std::string& read_gro
 }
 
 
-int main(int argc, char **argv) {
-  int opn = 1;
-  IndexType index_type = IndexType::__NONE__;
-
-  if (std::string(argv[opn]) == "--strobe-mode") {
-    g_stype = SType::Strobemer;
-  }
-  opn++;
-
-  auto opt = parse_command_line_arguments(argc, argv, g_stype == SType::Strobemer);
-  logger.set_level(opt.verbose ? LOG_DEBUG : LOG_INFO);
-  logger.info() << std::setprecision(2) << std::fixed;
-
-  // General Setup
-  logger.info() << "Starting General Setup" << std::endl;
-  if (argc < 3) {
-    logger.error() << "Please provide a valid command." << std::endl;
+int main(int ac, char **av) {
+  if (ac < 3) {
+    print_usage();
     return 0;
   }
 
-  int kmer_temp = 0, kmer_step_tmp = 0;
-  Reference **r = new Reference*[2];
-  const char *reference_file;
-  const char *read_file_01;
-  const char *read_file_02;
-  StrobemerIndex *index_reference = nullptr;
-  IndexParameters *index_parameters_reference = nullptr;
-  MappingParameters map_params;
+  int opn = 1;
+  int kmer_temp = 0;
+  IndexType index_type = IndexType::__NONE__;
 
-  g_ncpus = atoi(std::to_string(opt.n_threads).c_str());
+  while (opn < ac) {
+    bool flag = false;
+    if (av[opn][0] == '-') {
+      if (av[opn][1] == 't') {
+        g_ncpus = atoi(av[opn + 1]);
+        opn += 2;
+        flag = true;
+      } else if (av[opn][1] == 'l') {
+        kmer_temp = atoi(av[opn + 1]);
+        opn += 2;
+        flag = true;
+      } else if (av[opn][1] == 'o') {
+        g_out = av[opn + 1];
+        opn += 2;
+        flag = true;
+      } else if (av[opn][1] == 'e') {
+        g_embed_file = av[opn + 1];
+        opn += 2;
+        flag = true;
+      } else if (av[opn][1] == 'b') {
+        g_batch_file = av[opn + 1];
+        opn += 2;
+        flag = true;
+      } else if (av[opn][1] == 'p') {
+        pairdis = atoi(av[opn + 1]);
+        opn += 2;
+        flag = true;
+      } else if (av[opn][1] == 'x') {
+        enable_extension = false;
+        opn += 1;
+        flag = true;
+      } /////// indices ///////
+      else if (av[opn][1] == 'r' || av[opn][1] == 'R') {
+        enable_rmi = 1;
+        opn += 1;
+        flag = true;
+        index_type = IndexType::RMI_IDX;
+      } else if (av[opn][1] == 'B') {
+        enable_bin = 1;
+        opn += 1;
+        flag = true;
+        index_type = IndexType::BINARY_IDX;
+      }else if (av[opn][1] == 'H') {
+        enable_hash = 1;
+        opn += 1;
+        flag = true;
+        index_type = IndexType::HASH_IDX;
+      }//////////////////////
+      else if (av[opn][1] == 'w') {
+        enable_wfa_extension = true;
+        opn += 1;
+        flag = true;
+      } else if (av[opn][1] == 'd') {
+        extend_all = true;
+        opn += 1;
+        flag = true;
+      } else if (av[opn][1] == 'm') {
+        enable_minimizer = true;
+        opn += 1;
+        flag = true;
+      } else if (av[opn][1] == 's') {
+        enable_bs = true;
+        opn += 1;
+        flag = true;
+      } else {
+        print_usage();
+      }
+    }
+    if (!flag)
+      break;
+  }
+
+  /////// check indices ///////
+  if (!(enable_hash || enable_rmi || enable_bin)) {
+    // default is hash
+    enable_hash = 1;
+    index_type = IndexType::HASH_IDX;
+  }
+  if ((enable_hash + enable_rmi + enable_bin)>1) {
+    // too many indices! abort
+    cerr << "Please, select only one index!\n";
+    print_usage();
+    // exit
+    return 1;
+  }
+  switch (index_type) {
+    case IndexType::RMI_IDX:
+      cerr << "Using RMI index\n";
+      break;
+    case IndexType::HASH_IDX:
+      cerr << "Using hash table\n";
+      break;
+    case IndexType::BINARY_IDX:
+      cerr << "Using binary search\n";
+      break;
+    default:
+      // this should never happen
+      cerr << "*panic*\n";
+      exit(1);
+  }
+  /////////////////////////////
+
+  if (kmer_temp != 0)
+    kmer_len = kmer_temp;
+  mask = kmer_len == 32 ? ~0 : (1ULL << (kmer_len * 2)) - 1;
+
+  cerr << "Using " << g_ncpus << " cpus " << endl;
+  cerr << "Using kmer length " << kmer_len << " and step size " << kmer_step << endl;
+
   tbb::task_scheduler_init init(g_ncpus);
-  logger.info() << "Using " << g_ncpus << " cpus " << std::endl;
   make_code();
 
+  // load reference once
+  Reference **r = new Reference*[2];
   if (enable_bs){
-    r[0] = new Reference(opt.ref_filename.c_str(), kmer_len, g_stype, index_type, 'c');
-    r[1] = new Reference(opt.ref_filename.c_str(), kmer_len, g_stype, index_type, 'g');
+    r[0] = new Reference(av[opn], kmer_len, g_stype, index_type, 'c');
+    r[1] = new Reference(av[opn++], kmer_len, g_stype, index_type, 'g');
   } else {
-    r[0] = new Reference(opt.ref_filename.c_str(), kmer_len, g_stype, index_type, ' ');
+    r[0] = new Reference(av[opn++], kmer_len, g_stype, index_type, ' ');
   }
 
-  // accalign command: ./accalign -l 32 -t 7 -s <path-to-ref-genome>/<ref-genome>.fna <path-to-input-folder>/<input-file>.fq > <path-to-output-folder>/<output-file>.sam
-  // strobealign command: strobealign --use-index ref.fa reads.1.fastq.gz reads.2.fastq.gz
-  if (g_stype != SType::Strobemer) {
-    // Accel-Align Setup
-    logger.info() << "Starting Accel-Align Setup (hash seed)" << std::endl;
-
-    kmer_temp = atoi(std::to_string(opt.l).c_str());
-    kmer_step_tmp = atoi(std::to_string(opt.k).c_str());
-    g_out = opt.o;
-    g_embed_file = opt.e;
-    g_batch_file = opt.b;
-//    pairdis = atoi(std::to_string(opt.p).c_str());
-    enable_extension = opt.x;
-    enable_wfa_extension = opt.w;
-    extend_all = opt.d;
-    if (opt.m)
-      g_stype = SType::Minimizer;
-    enable_bs = opt.bs;
-
-    if (kmer_temp != 0)
-      kmer_len = kmer_temp;
-    if (kmer_step_tmp != 0)
-      kmer_step = kmer_step_tmp;
-    mask = kmer_len == 32 ? ~0 : (1ULL << (kmer_len * 2)) - 1;
-
-    cerr << "Using kmer length " << kmer_len << " and step size " << kmer_step << endl;
-
-    if (enable_extension && !enable_wfa_extension) {
-      ksw_gen_simple_mat(5, mat, SC_MCH, SC_MIS, SC_AMBI);
-    }
-    logger.info() << "Finished Accel-Align Setup" << std::endl;
-  } else {
-    // Strobealign Setup
-    logger.info() << "Starting Accel-Align Setup (strobmer seed)" << std::endl;
-
-    // Load accalign Reference data structure without acalign index
-    if(opt.ref_filename.empty()) {
-      logger.error() << "Please provide a valid reference file" << std::endl;
-      return 1;
-    }
-
-    if (opt.c >= 64 || opt.c <= 0) {
-      throw BadParameter("c must be greater than 0 and less than 64");
-    }
-
-    InputBuffer input_buffer = get_input_buffer(opt);
-    if (!opt.r_set && !opt.reads_filename1.empty()) {
-      opt.r = estimate_read_length(input_buffer);
-      logger.info() << "Estimated read length: " << opt.r << " bp\n";
-    }
-    input_buffer.rewind_reset();
-    IndexParameters index_parameters = IndexParameters::from_read_length(
-            opt.r,
-            opt.k_set ? opt.k : IndexParameters::DEFAULT,
-            opt.s_set ? opt.s : IndexParameters::DEFAULT,
-            opt.l_set ? opt.l : IndexParameters::DEFAULT,
-            opt.u_set ? opt.u : IndexParameters::DEFAULT,
-            opt.c_set ? opt.c : IndexParameters::DEFAULT,
-            opt.max_seed_len_set ? opt.max_seed_len : IndexParameters::DEFAULT
-    );
-    index_parameters_reference = &index_parameters;
-    logger.debug() << index_parameters << '\n';
-    AlignmentParameters aln_params;
-    aln_params.match = opt.A;
-    aln_params.mismatch = opt.B;
-    aln_params.gap_open = opt.O;
-    aln_params.gap_extend = opt.E;
-    aln_params.end_bonus = opt.end_bonus;
-
-
-    MappingParameters map_param;
-    map_param.r = opt.r;
-    map_param.max_secondary = opt.max_secondary;
-    map_param.dropoff_threshold = opt.dropoff_threshold;
-    map_param.rescue_level = opt.rescue_level;
-    map_param.max_tries = opt.max_tries;
-    map_param.is_sam_out = opt.is_sam_out;
-    map_param.cigar_ops = opt.cigar_eqx ? CigarOps::EQX : CigarOps::M;
-    map_param.output_unmapped = opt.output_unmapped;
-    map_param.details = opt.details;
-    map_param.verify();
-
-    log_parameters(index_parameters, map_params, aln_params);
-    logger.debug() << "Threads: " << opt.n_threads << std::endl;
-
-    // Retrieve Strobealign index
-    References references;
-    Timer read_refs_timer;
-    references = References::from_fasta(opt.ref_filename);
-    logger.info() << "Time reading reference: " << read_refs_timer.elapsed() << " s\n";
-
-    logger.info() << "Reference size: " << references.total_length() / 1E6 << " Mbp ("
-                  << references.size() << " contig" << (references.size() == 1 ? "" : "s")
-                  << "; largest: "
-                  << (*std::max_element(references.lengths.begin(), references.lengths.end()) / 1E6) << " Mbp)\n";
-    if (references.total_length() == 0) {
-      throw InvalidFasta("No reference sequences found");
-    }
-
-    // Read Strobealign index from the provided file
-    index_reference = new StrobemerIndex(references, index_parameters);
-
-    Timer read_index_timer;
-    std::string sti_path = opt.ref_filename + index_parameters.filename_extension();
-    logger.info() << "Reading index from " << sti_path << '\n';
-    index_reference->read(sti_path);
-    logger.info() << "Total time reading index: " << read_index_timer.elapsed() << " s\n";
-
-    logger.info() << "Running in " << (opt.is_SE ? "single-end" : "paired-end") << " mode" << std::endl;
-    logger.info() << "Finished Strobealign Setup" << std::endl;
-  }
+  if (enable_extension && !enable_wfa_extension)
+    ksw_gen_simple_mat(5, mat, SC_MCH, SC_MIS, SC_AMBI);
 
   size_t total_begin = time(NULL);
 
   auto start = std::chrono::system_clock::now();
 
-  read_file_01 = opt.reads_filename1.c_str();
-  if(!opt.is_SE) {
-    read_file_02 = opt.reads_filename2.c_str();
-  }
-
-  // Run Accel-Align using the provided mode
+  StrobemerIndex *index_reference = nullptr;
+  IndexParameters *index_parameters_reference = nullptr;
+  MappingParameters map_params;
   AccAlign f(r, index_reference, index_parameters_reference, map_params);
   f.open_output(g_out);
-  if (opt.is_SE) {
-    f.fastq(read_file_01, "\0", false);
-  } else if (!opt.reads_filename2.empty()) {
-    f.tbb_fastq(read_file_01, read_file_02); // TODO
+
+  if (opn == ac - 1) {
+    f.fastq(av[opn], "\0", false);
+//    f.tbb_fastq(av[opn], "\0");
+  } else if (opn == ac - 2) {
+//    f.fastq(av[opn], av[opn + 1], false);
+    f.tbb_fastq(av[opn], av[opn + 1]);
   } else {
     print_usage();
     return 0;
@@ -3334,7 +3315,7 @@ int main(int argc, char **argv) {
 
   auto end = std::chrono::system_clock::now();
   auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-  cerr << "Time to align: " << elapsed.count() / 1000 << " secs\n";
+  cerr << "Time to align: " << elapsed.count() / 1000.0 << " secs\n";
 
   f.print_stats();
   f.close_output();

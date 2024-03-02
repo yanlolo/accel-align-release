@@ -48,8 +48,16 @@ options:
 Example:
 
 ```
-## Hash: mode by 1073741651
+###### -h {prime, lprime, 2^29, 2^32} ###### 
+## mod by {1073741651, 2861333663, 2^29-1, 2^32-1}
+###### -x {0, 32, 64} ###### 
+## XXH not used, XXH32, XXH64.
+
+## output  /home/yiqing/data/fsva-hg37/hg37.fna.hash32 (kmer len)
 ./accindex -l 32 -h prime -x 0 /home/yiqing/data/fsva-hg37/hg37.fna
+
+
+
 
 ## binary search
 make key_gen
