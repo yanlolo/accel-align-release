@@ -8,11 +8,12 @@ endif
 
 ACCLDFLAGS=./WFA-paper/build/libwfa.a -lz -ltbb
 TARGETS=accindex accalign
-CPUSRC=reference.cpp accalign.cpp embedding.cpp ksw2_extz2_sse.c bseq.c index.c kthread.c kalloc.c sketch.c misc.c options.c seed.c strobealign/strobe-index.cpp strobealign/indexparameters.cpp strobealign/io.cpp strobealign/randstrobes.cpp ./strobealign/ext/xxhash.c strobealign/pc.cpp strobealign/sam.cpp strobealign/cigar.cpp strobealign/aln.cpp strobealign/aligner.cpp strobealign/fastq.cpp strobealign/nam.cpp strobealign/paf.cpp strobealign/cmdline.cpp strobealign/readlen.cpp strobealign/refs.cpp ./strobealign/ssw/ssw.c ./strobealign/ssw/ssw_cpp.cpp
-IDXSRC=index.cpp embedding.cpp bseq.c index.c kthread.c kalloc.c sketch.c misc.c options.c strobealign/strobe-index.cpp strobealign/indexparameters.cpp strobealign/io.cpp strobealign/randstrobes.cpp ./strobealign/ext/xxhash.c strobealign/pc.cpp strobealign/sam.cpp strobealign/cigar.cpp strobealign/aln.cpp strobealign/aligner.cpp strobealign/fastq.cpp strobealign/nam.cpp strobealign/paf.cpp strobealign/cmdline.cpp strobealign/readlen.cpp strobealign/refs.cpp ./strobealign/ssw/ssw.c ./strobealign/ssw/ssw_cpp.cpp
+CPUSRC=src/reference.cpp src/accalign.cpp src/embedding.cpp src/ksw2_extz2_sse.c src/bseq.c src/index.c src/kthread.c src/kalloc.c src/sketch.c src/misc.c src/options.c src/seed.c strobealign/strobe-index.cpp strobealign/indexparameters.cpp strobealign/io.cpp strobealign/randstrobes.cpp ./strobealign/ext/xxhash.c strobealign/pc.cpp strobealign/sam.cpp strobealign/cigar.cpp strobealign/aln.cpp strobealign/aligner.cpp strobealign/fastq.cpp strobealign/nam.cpp strobealign/paf.cpp strobealign/cmdline.cpp strobealign/readlen.cpp strobealign/refs.cpp ./strobealign/ssw/ssw.c ./strobealign/ssw/ssw_cpp.cpp
+IDXSRC=src/index.cpp src/embedding.cpp src/bseq.c src/index.c src/kthread.c src/kalloc.c src/sketch.c src/misc.c src/options.c strobealign/strobe-index.cpp strobealign/indexparameters.cpp strobealign/io.cpp strobealign/randstrobes.cpp ./strobealign/ext/xxhash.c strobealign/pc.cpp strobealign/sam.cpp strobealign/cigar.cpp strobealign/aln.cpp strobealign/aligner.cpp strobealign/fastq.cpp strobealign/nam.cpp strobealign/paf.cpp strobealign/cmdline.cpp strobealign/readlen.cpp strobealign/refs.cpp ./strobealign/ssw/ssw.c ./strobealign/ssw/ssw_cpp.cpp
 HEADERS=$(wildcard *.h ./include/*.h)
 HEADERSHPP=$(wildcard *.hpp)
 RMI_IDXSRC=src/key_gen.cpp
+STATSSRC=src/stats.cpp
 
 .PHONY: WFA-paper all
 all: WFA-paper ${TARGETS}
@@ -29,6 +30,9 @@ accindex: ${IDXSRC} ${HEADERS} ${HEADERSHPP}
 
 accalign: ${CPUSRC} ${HEADERS} ${HEADERSHPP}
 	${CC} -o $@ ${CPUSRC} ${ACCLDFLAGS} ${CFLAGS}
+
+stats: WFA-paper ${STATSSRC} ${HEADERS}
+	${CXX} -o $@ ${STATSSRC} ${ACCLDFLAGS} ${CFLAGS} -fopenmp
 
 clean:
 	$(MAKE) -C WFA-paper clean

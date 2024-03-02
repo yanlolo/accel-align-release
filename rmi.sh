@@ -119,12 +119,12 @@ fi
 echo -e "\n\033[1;96m [rmi.sh] \033[0mCompiling the index generation program..."
 # Build the index - if it has not being compiled yet
 if ! [ -e "${BASE_DIR}/rmi/target/release/rmi" ] && ! [ -e ./rmi ]; then
-  cd "${BASE_DIR}/rmi" && cargo build --release
+  cd "${BASE_DIR}/RMI" && cargo build --release
   cd $OUTPUT_DIR
 fi
 if [[ ! -e ./rmi ]]; then
   # Copy it
-  cp "${BASE_DIR}/rmi/target/release/rmi" .
+  cp "${BASE_DIR}/RMI/target/release/rmi" .
 fi
 
 echo -e "\n\033[1;96m [rmi.sh] \033[0mRunning the optimizer..."

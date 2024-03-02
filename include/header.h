@@ -32,14 +32,14 @@
 #include "tbb/concurrent_queue.h"
 #include "tbb/parallel_sort.h"
 
-#include "../type.h"
-#include "../const.h"
-#include "../embedding.h"
-#include "../accalign.h"
+#include "type.h"
+#include "const.h"
+#include "embedding.h"
+#include "accalign.h"
 
-#include "../minimap.h"
-#include "../mmpriv.h"
-#include "../hash.hpp"
+#include "minimap.h"
+#include "mmpriv.h"
+#include "hash.hpp"
 
 extern "C" {
 #include "gap_affine/affine_wavefront_align.h"

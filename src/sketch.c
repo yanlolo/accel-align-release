@@ -3,8 +3,8 @@
 #include <assert.h>
 #include <string.h>
 #define __STDC_LIMIT_MACROS
-#include "kvec.h"
-#include "mmpriv.h"
+#include "../include/kvec.h"
+#include "../include/mmpriv.h"
 
 unsigned char seq_nt4_table[256] = {
 	0, 1, 2, 3,  4, 4, 4, 4,  4, 4, 4, 4,  4, 4, 4, 4,

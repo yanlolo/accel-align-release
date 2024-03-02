@@ -1,21 +1,21 @@
-#include "include/header.h"
+#include "../include/header.h"
 
 #include <iomanip>
 
-#include "accalign.h"
-#include "ksw2.h"
-#include "strobealign/timer.hpp"
-#include "strobealign/logger.hpp"
+#include "../include/accalign.h"
+#include "../include/ksw2.h"
+#include "../strobealign/timer.hpp"
+#include "../strobealign/logger.hpp"
 
-#include "strobealign/refs.hpp"
-#include "strobealign/exceptions.hpp"
-#include "strobealign/cmdline.hpp"
-#include "strobealign/pc.hpp"
-#include "strobealign/aln.hpp"
-#include "strobealign/readlen.hpp"
-#include "strobealign/randstrobes.hpp"
-#include "strobealign/nam.hpp"
-#include "strobealign/strobe-index.hpp"
+#include "../strobealign/refs.hpp"
+#include "../strobealign/exceptions.hpp"
+#include "../strobealign/cmdline.hpp"
+#include "../strobealign/pc.hpp"
+#include "../strobealign/aln.hpp"
+#include "../strobealign/readlen.hpp"
+#include "../strobealign/randstrobes.hpp"
+#include "../strobealign/nam.hpp"
+#include "../strobealign/strobe-index.hpp"
 
 using namespace tbb::flow;
 using namespace std;

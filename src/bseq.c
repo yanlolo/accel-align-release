@@ -3,9 +3,9 @@
 #include <stdlib.h>
 #include <assert.h>
 #define __STDC_LIMIT_MACROS
-#include "bseq.h"
-#include "kvec.h"
-#include "kseq.h"
+#include "../include/bseq.h"
+#include "../include/kvec.h"
+#include "../include/kseq.h"
 KSEQ_INIT2(, gzFile, gzread)
 
 unsigned char seq_comp_table[256] = {

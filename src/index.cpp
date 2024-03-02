@@ -15,20 +15,20 @@
 #include <unistd.h>
 #endif
 
-#include "strobealign/refs.hpp"
-#include "strobealign/exceptions.hpp"
-#include "strobealign/cmdline.hpp"
-#include "strobealign/strobe-index.hpp"
-#include "strobealign/pc.hpp"
-#include "strobealign/aln.hpp"
-#include "strobealign/logger.hpp"
-#include "strobealign/timer.hpp"
-#include "strobealign/readlen.hpp"
+#include "../strobealign/refs.hpp"
+#include "../strobealign/exceptions.hpp"
+#include "../strobealign/cmdline.hpp"
+#include "../strobealign/strobe-index.hpp"
+#include "../strobealign/pc.hpp"
+#include "../strobealign/aln.hpp"
+#include "../strobealign/logger.hpp"
+#include "../strobealign/timer.hpp"
+#include "../strobealign/readlen.hpp"
 //#include "strobealign/version.hpp"
 //#include "strobealign/buildconfig.hpp"
 
 
-#include "include/header.h"
+#include "../include/header.h"
 using namespace std;
 uint64_t mod = MOD_29;    // default value is 2^29 - 1
 uint32_t mod_tmp;

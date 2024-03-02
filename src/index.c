@@ -8,12 +8,12 @@
 #include <fcntl.h>
 #include <stdio.h>
 #define __STDC_LIMIT_MACROS
-#include "kthread.h"
-#include "bseq.h"
-#include "minimap.h"
-#include "mmpriv.h"
-#include "kvec.h"
-#include "khash.h"
+#include "../include/kthread.h"
+#include "../include/bseq.h"
+#include "../include/minimap.h"
+#include "../include/mmpriv.h"
+#include "../include/kvec.h"
+#include "../include/khash.h"
 
 #define idx_hash(a) ((a)>>1)
 #define idx_eq(a, b) ((a)>>1 == (b)>>1)
@@ -275,7 +275,7 @@ static void mm_idx_post(mm_idx_t *mi, int n_threads)
 
 #include <string.h>
 #include <zlib.h>
-#include "bseq.h"
+#include "../include/bseq.h"
 
 typedef struct {
 	int mini_batch_size;
@@ -628,8 +628,8 @@ int mm_idx_reader_eof(const mm_idx_reader_t *r) // TODO: in extremely rare cases
 
 #include <ctype.h>
 #include <zlib.h>
-#include "ksort.h"
-#include "kseq.h"
+#include "../include/ksort.h"
+#include "../include/kseq.h"
 KSTREAM_DECLARE(gzFile, gzread)
 
 int mm_idx_alt_read(mm_idx_t *mi, const char *fn)

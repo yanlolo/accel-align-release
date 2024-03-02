@@ -1,6 +1,6 @@
 #include <string.h>
 #include <assert.h>
-#include "ksw2.h"
+#include "../include/ksw2.h"
 
 #ifdef __SSE2__
 #include <emmintrin.h>

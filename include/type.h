@@ -2,9 +2,9 @@
 
 #include "const.h"
 #include "minimap.h"
-#include "strobealign/strobe-index.hpp"
-#include "strobealign/indexparameters.hpp"
-#include "strobealign/aln.hpp"
+#include "../strobealign/strobe-index.hpp"
+#include "../strobealign/indexparameters.hpp"
+#include "../strobealign/aln.hpp"
 
 //seedtype
 enum class SType {

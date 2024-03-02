@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include <limits.h>
-#include "mmpriv.h"
+#include "../include/mmpriv.h"
 
 void mm_idxopt_init(mm_idxopt_t *opt)
 {

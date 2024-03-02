@@ -1,4 +1,4 @@
-#include "include/header.h"
+#include "../include/header.h"
 
 class RefParser {
   string &ref;

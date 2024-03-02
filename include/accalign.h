@@ -1,8 +1,8 @@
 #pragma once
 
 #include "mmpriv.h"
-#include "strobealign/strobe-index.hpp"
-#include "strobealign/aln.hpp"
+#include "../strobealign/strobe-index.hpp"
+#include "../strobealign/aln.hpp"
 
 class AccAlign {
  private:

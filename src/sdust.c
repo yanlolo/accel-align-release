@@ -1,10 +1,10 @@
 #include <string.h>
 #include <stdint.h>
 #include <stdio.h>
-#include "kalloc.h"
+#include "../include/kalloc.h"
 #include "kdq.h"
-#include "kvec.h"
-#include "sdust.h"
+#include "../include/kvec.h"
+#include "../include/sdust.h"
 
 #define SD_WLEN 3
 #define SD_WTOT (1<<(SD_WLEN<<1))

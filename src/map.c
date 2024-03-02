@@ -2,13 +2,13 @@
 #include <string.h>
 #include <assert.h>
 #include <errno.h>
-#include "kthread.h"
-#include "kvec.h"
-#include "kalloc.h"
-#include "sdust.h"
-#include "mmpriv.h"
-#include "bseq.h"
-#include "khash.h"
+#include "../include/kthread.h"
+#include "../include/kvec.h"
+#include "../include/kalloc.h"
+#include "../include/sdust.h"
+#include "../include/mmpriv.h"
+#include "../include/bseq.h"
+#include "../include/khash.h"
 #include <time.h>
 
 extern double mm_cal, mm_fetch, mm_hit_cnt;
@@ -79,7 +79,7 @@ static void collect_minimizers(void *km, const mm_mapopt_t *opt, const mm_idx_t 
 	}
 }
 
-#include "ksort.h"
+#include "../include/ksort.h"
 #define heap_lt(a, b) ((a).x > (b).x)
 KSORT_INIT(heap, mm128_t, heap_lt)
 

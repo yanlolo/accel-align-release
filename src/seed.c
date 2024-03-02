@@ -1,6 +1,6 @@
-#include "mmpriv.h"
-#include "kalloc.h"
-#include "ksort.h"
+#include "../include/mmpriv.h"
+#include "../include/kalloc.h"
+#include "../include/ksort.h"
 
 void mm_seed_mz_flt(void *km, mm128_v *mv, int32_t q_occ_max, float q_occ_frac)
 {

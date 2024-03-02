@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "kalloc.h"
+#include "../include/kalloc.h"
 
 /* In kalloc, a *core* is a large chunk of contiguous memory. Each core is
  * associated with a master header, which keeps the size of the current core

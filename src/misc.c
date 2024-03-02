@@ -1,5 +1,5 @@
 #include <stdlib.h>
-#include "mmpriv.h"
+#include "../include/mmpriv.h"
 
 int mm_verbose = 1;
 int mm_dbg_flag = 0;
@@ -150,7 +150,7 @@ void mm_err_fread(void *p, size_t size, size_t nitems, FILE *fp)
 	}
 }
 
-#include "ksort.h"
+#include "../include/ksort.h"
 
 #define sort_key_128x(a) ((a).x)
 KRADIX_SORT_INIT(128x, mm128_t, sort_key_128x, 8) 
