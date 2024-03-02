@@ -28,7 +28,7 @@
 //#include "strobealign/buildconfig.hpp"
 
 
-#include "header.h"
+#include "include/header.h"
 using namespace std;
 uint64_t mod = MOD_29;    // default value is 2^29 - 1
 uint32_t mod_tmp;
