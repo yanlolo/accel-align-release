@@ -28,6 +28,8 @@ string g_out, g_batch_file, g_embed_file;
 char rcsymbol[6] = "TGCAN";
 uint8_t code[256];
 bool enable_extension = true, enable_wfa_extension = false, extend_all = false, enable_bs = false;
+int enable_rmi = 0, enable_hash = 0, enable_bin = 0;
+
 //enable_minimizer = false, enable_strobealign_extension = false
 int min_match = 21; //at leach min_match chars are matched, otherwise will regard as unalign
 int g_ncpus = 1;
@@ -108,11 +110,18 @@ void print_usage() {
   cerr << "\t Maximum read length supported is 512\n";
   cerr << "options:\n";
   cerr << "\t-t INT Number of cpu threads to use [all]\n";
+  cerr << "\t-l INT Length of seed [32]\n";
   cerr << "\t-o Name of the output file \n";
+  cerr << "\t+-- index options [choose 1] --+\n";
+  cerr << "\t|   -R Use RMI index           |\n";
+  cerr << "\t|   -B Use binary index        |\n";
+  cerr << "\t|   -H Use MOD hash table      |\n";
+  cerr << "\t+------------------------------+\n";
   cerr << "\t-x Alignment-free mode\n";
   cerr << "\t-w Use WFA for extension. KSW used by default. \n";
   cerr << "\t-p Maximum distance allowed between the paired-end reads [1000]\n";
   cerr << "\t-d Disable embedding, extend all candidates from seeding (this mode is super slow, only for benchmark).\n";
+  cerr << "\t-m Seeding with minimizer.\n";
   cerr << "\t-s bisulfite sequencing read alignment mode \n";
 
 }
@@ -337,9 +346,7 @@ void AccAlign::output_root_fn(tbb::concurrent_bounded_queue<ReadCnt> *outputQ,
       targetQ->push(gpu_reads);   //put sentinel back
       break;
     }
-    Read *read01 = std::get<0>(gpu_reads);
-    Read *read02 = std::get<1>(gpu_reads);
-    align_wrapper(0, 0, nreads, read01, read02, dataQ);
+    align_wrapper(0, 0, nreads, std::get<0>(gpu_reads), std::get<1>(gpu_reads), dataQ);
   } while (1);
 
   cerr << "Extension and output function quitting...\n";
@@ -441,11 +448,12 @@ void AccAlign::mark_for_extension(Read &read, char S, Region &cregion, int ref_i
 //  for (size_t i = ori_slide; i + kmer_len <= rlen; i += kmer_step) {
 //    uint64_t k = 0;
 //    for (size_t j = i; j < i + kmer_len; j++)
-//      k = (k << 2) + *(Q + j);
-//    size_t hash = (k & mask) % MOD;
-//    b[kmer_idx] = get_keyv(ref_id)[hash];
-//    e[kmer_idx] = get_keyv(ref_id)[hash + 1];
+////      k = (k << 2) + *(Q + j);
+//      }
+//      // lookup to get the position of the hash
+//      get_lookup(ref_id, k, b+kmer_idx, e+kmer_idx);
 //    cnt.push_back(e[kmer_idx] - b[kmer_idx]);
+
 //    if (e[kmer_idx] - b[kmer_idx] >= max_occ)
 //      nseed_freq++;
 //    kmer_idx++;
@@ -1199,10 +1207,11 @@ void AccAlign::pigeonhole_query(char *Q,
     uint64_t k = 0;
     for (size_t j = i; j < i + kmer_len; j++)
       k = (k << 2) + *(Q + j);
-    size_t hash = (k & mask) % MOD;
-    b[kmer_idx] = get_keyv(ref_id)[hash];
-    e[kmer_idx] = get_keyv(ref_id)[hash + 1];
-    if (e[kmer_idx] - b[kmer_idx] >= max_occ)
+
+  // lookup to get the position of the hash
+  get_lookup(ref_id, k, b+kmer_idx, e+kmer_idx);
+
+  if (e[kmer_idx] - b[kmer_idx] >= max_occ)
       nseed_freq++;
     kmer_idx++;
   }
@@ -3150,8 +3159,9 @@ std::string sam_header(const References& references, const std::string& read_gro
 
 
 int main(int argc, char **argv) {
-
   int opn = 1;
+  IndexType index_type = IndexType::__NONE__;
+
   if (std::string(argv[opn]) == "--strobe-mode") {
     g_stype = SType::Strobemer;
   }
@@ -3182,12 +3192,11 @@ int main(int argc, char **argv) {
   logger.info() << "Using " << g_ncpus << " cpus " << std::endl;
   make_code();
 
-  // load reference once
   if (enable_bs){
-    r[0] = new Reference(opt.ref_filename.c_str(), g_stype, 'c', true);
-    r[1] = new Reference(opt.ref_filename.c_str(), g_stype, 'g', true);
+    r[0] = new Reference(opt.ref_filename.c_str(), kmer_len, g_stype, index_type, 'c');
+    r[1] = new Reference(opt.ref_filename.c_str(), kmer_len, g_stype, index_type, 'g');
   } else {
-    r[0] = new Reference(opt.ref_filename.c_str(), g_stype, ' ', true);
+    r[0] = new Reference(opt.ref_filename.c_str(), kmer_len, g_stype, index_type, ' ');
   }
 
   // accalign command: ./accalign -l 32 -t 7 -s <path-to-ref-genome>/<ref-genome>.fna <path-to-input-folder>/<input-file>.fq > <path-to-output-folder>/<output-file>.sam

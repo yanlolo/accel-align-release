@@ -2,6 +2,8 @@
 
 #include "const.h"
 #include "minimap.h"
+#include "rmi.h"
+#include "hash.hpp"
 #include "../strobealign/strobe-index.hpp"
 #include "../strobealign/indexparameters.hpp"
 #include "../strobealign/aln.hpp"
@@ -12,6 +14,13 @@ enum class SType {
   Strobemer,
   Minimizer,
   LearntIndex // TODO
+};
+
+enum IndexType {
+  __NONE__,
+  RMI_IDX,
+  BINARY_IDX,
+  HASH_IDX
 };
 
 struct Alignment {
@@ -106,21 +115,42 @@ struct Read {
 
 class Reference {
  public:
-  void load_index(const char *F);
+  void load_index32(const char *F);
+  void load_index64(const char *F);
+  void load_index_classic(const char *F);
+  std::function<void(const char*)> load_index;
+  void index_rmi_lookup32(uint64_t key, size_t* b, size_t* e);
+  void index_rmi_lookup64(uint64_t key, size_t* b, size_t* e);
+  void index_bin_lookup32(uint64_t key, size_t* b, size_t* e);
+  void index_bin_lookup64(uint64_t key, size_t* b, size_t* e);
+  void index_lookup_classic(uint64_t key, size_t* b, size_t* e);
+  std::function<void(uint64_t,size_t*,size_t*)> index_lookup;
+  uint32_t get_keyv_val32(uint64_t idx);
+  uint32_t get_keyv_val64(uint64_t idx);
+  std::function<uint32_t(uint64_t)> get_keyv_val;
+
   void load_reference(const char *F);
 
   std::string ref;
   std::vector<std::string> name;
   std::vector<uint32_t> offset;
   uint32_t *keyv, *posv;
-  uint32_t nposv, nkeyv;
+  uint64_t nposv, nkeyv, nkeyv_true;
   mm_idx_t *mi;
+  RMI rmi;  // this is fine
+  unsigned kmer_len;
+  bool enable_minimizer;
   SType g_stype;
+  IndexType index_type;
   bool load_accalign_index;
+
   char mode; // 'c' c-> t; 'g' g->a; ' ' original
-
-  Reference(const char *F, SType g_stype, char mode, bool load_accalign_index);
-
+  // for classic index
+  uint64_t mod;
+  uint32_t xxh_type;
+  XXHash xxh;
+//  Reference(const char *F, SType g_stype, char mode, bool load_accalign_index);
+  Reference(const char *F, unsigned _kmer_len, SType g_stype, IndexType _index_type, char _mode);
   ~Reference();
 };
 
@@ -134,3 +164,9 @@ typedef struct {
   int32_t dp_score;
   uint32_t cigar[];
 } Extension;
+
+// add RMI class
+// function typedefs
+typedef bool (*load_type)(char const*);
+typedef uint64_t (*lookup_type)(uint64_t, size_t*);
+typedef void (*cleanup_type)();

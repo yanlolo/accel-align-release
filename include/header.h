@@ -25,6 +25,7 @@
 #include <sys/mman.h>
 #include <sched.h>
 #include <fcntl.h>
+#include <dlfcn.h> // for Linux
 
 #include "tbb/tbb.h"
 #include "tbb/flow_graph.h"
@@ -36,6 +37,7 @@
 #include "const.h"
 #include "embedding.h"
 #include "accalign.h"
+#include "rmi.h"
 
 #include "minimap.h"
 #include "mmpriv.h"
