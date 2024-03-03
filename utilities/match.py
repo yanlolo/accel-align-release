@@ -15,15 +15,15 @@ with open(ref_path, 'r') as file:
             match = rlen / 10
             break
 
-print('Skipping the first ' + str(ref_skip) + ' lines in the reference file')
-print('Read length: ' + str(rlen) + ', at least match' + str(match))
+print('Skipping the header: first ' + str(ref_skip) + ' lines in the reference file')
+print('Read length: ' + str(rlen) + 'bp, at least match: ' + str(match))
 
 with open(align_path, 'r') as file:
     for align_skip, line in enumerate(file):
         if 'AS' in line and 'NM' in line:
             break
 
-print('Skipping the first ' + str(align_skip) + ' lines in the aligned SAM')
+print('Skipping the header: first ' + str(align_skip) + ' lines in the aligned SAM')
 
 
 colName = ["QNAME", "FLAG", "RNAME", "POS"]

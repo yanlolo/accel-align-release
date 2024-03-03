@@ -11,12 +11,13 @@ code_dir=/home/yiqing/code/accel-align-release
 in_dir=/home/yiqing/yan/input/simulate/10m-pe-1/
 out_dir=/home/yiqing/yan/output
 ref=/home/yiqing/data/fsva-hg37/hg37.fna
+nthreads=4
 
-$code_dir/accalign -l 32 -R -t 4 -o $out_dir/rmi.sam $ref \
+$code_dir/accalign -l 32 -R -t $nthreads -o $out_dir/rmi.sam $ref \
 $in_dir/sv-10m-100-r1.fastq $in_dir/sv-10m-100-r2.fastq
 
 ## accuracy check
-python $code_dir/match.py $in_dir/sv-10m-100-pe-align.sam $out_dir/rmi.sam $out_dir/rmi.csv  
+python $code_dir/utilities/match.py $in_dir/sv-10m-100-pe-align.sam $out_dir/rmi.sam $out_dir/rmi.csv  
 
 ```
 
@@ -33,9 +34,14 @@ code_dir=/home/yiqing/code/accel-align-release
 in_dir=/home/yiqing/yan/input/simulate/10m-pe-1/
 out_dir=/home/yiqing/yan/output
 ref=/home/yiqing/data/fsva-hg37/hg37.fna
+nthreads=4
 
-$code_dir/accalign -l 32 -B -t 4 -o $out_dir/binary.sam input_dir
-$ref $in_dir/read1.fastq $in_dir/read2.fastq
+$code_dir/accalign -l 32 -B -t $nthreads -o $out_dir/binary.sam $ref \
+$in_dir/sv-10m-100-r1.fastq $in_dir/sv-10m-100-r2.fastq
+
+## accuracy check
+python $code_dir/utilities/match.py $in_dir/sv-10m-100-pe-align.sam $out_dir/binary.sam $out_dir/binary.csv  
+
 ```
 
 
@@ -49,8 +55,22 @@ $ref $in_dir/read1.fastq $in_dir/read2.fastq
 ## XXH not used, XXH32, XXH64.
 
 ## output  /home/yiqing/data/fsva-hg37/hg37.fna.hash32 (kmer len)
-./accindex -l 32 -h prime -x 0 /home/yiqing/data/fsva-hg37/hg37.fna
+code_dir=/home/yiqing/code/accel-align-release
+ref=/home/yiqing/data/fsva-hg37/hg37.fna
+$code_dir/accindex -l 32 -h 2^29 -x 0 $ref
 
 
 ## Align
+code_dir=/home/yiqing/code/accel-align-release
+in_dir=/home/yiqing/yan/input/simulate/10m-pe-1/
+out_dir=/home/yiqing/yan/output
+ref=/home/yiqing/data/fsva-hg37/hg37.fna
+nthreads=4
+
+$code_dir/accalign -l 32 -H -t $nthreads -o $out_dir/hash.sam $ref \
+$in_dir/sv-10m-100-r1.fastq $in_dir/sv-10m-100-r2.fastq
+
+## accuracy check
+python $code_dir/utilities/match.py $in_dir/sv-10m-100-pe-align.sam $out_dir/hash.sam $out_dir/hash.csv  
+
 ```
