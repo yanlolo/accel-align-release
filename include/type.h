@@ -8,14 +8,14 @@
 #include "../strobealign/indexparameters.hpp"
 #include "../strobealign/aln.hpp"
 
-//seedtype
+//seedtype: how to build the seed
 enum class SType {
   Hash,
   Strobemer,
-  Minimizer,
-  LearntIndex // TODO
+  Minimizer
 };
 
+//Index type: how to look up the seed
 enum IndexType {
   __NONE__,
   RMI_IDX,
