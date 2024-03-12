@@ -569,29 +569,8 @@ int main(int ac, char **av) {
         mm_w_tmp = atoi(av[it + 1]);
       else if (strcmp(av[it], "-s") == 0)
         enable_bs = true;
-      else if (strcmp(av[it], "-h") == 0) {
-        // check for special string values
-        if (strcmp(av[it+1], "2^29") == 0 || strcmp(av[it+1], "2^29-1") == 0)
-          mod = MOD_29;
-        else if (strcmp(av[it+1], "2^32") == 0)
-          mod = MOD_32;
-        else if (strcmp(av[it+1], "prime") == 0)
-          mod = MOD_PRIME;
-        else if (strcmp(av[it+1], "lprime") == 0)
-          mod = MOD_LPRIME;
-          // now do classic conversion
-        else try {
-            mod_tmp = stoul(string(av[it+1]));
-            mod = static_cast<uint64_t>(mod_tmp);
-          } catch (const invalid_argument& e) {
-            cerr << "Invalid argument: " << e.what() << endl;
-            cerr << "Special string values for -h are 2^29-1, prime, lprime.\n";
-            exit(1);
-          } catch (const out_of_range& e) {
-            cerr << "Out of range: " << e.what() << endl;
-            exit(1);
-          }
-      }
+      else if (strcmp(av[it], "-h") == 0)
+        mod = atoi(av[it + 1]);
       else if (strcmp(av[it], "-x") == 0) {
         xxh_type = atoi(av[it + 1]);
         if (xxh_type!=0 && xxh_type!=32 && xxh_type!=64) {
