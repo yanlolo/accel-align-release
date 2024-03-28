@@ -570,7 +570,7 @@ int main(int ac, char **av) {
       else if (strcmp(av[it], "-s") == 0)
         enable_bs = true;
       else if (strcmp(av[it], "-h") == 0)
-        mod = atoi(av[it + 1]);
+        mod = atoll(av[it + 1]);
       else if (strcmp(av[it], "-x") == 0) {
         xxh_type = atoi(av[it + 1]);
         if (xxh_type!=0 && xxh_type!=32 && xxh_type!=64) {
