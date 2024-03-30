@@ -373,7 +373,7 @@ static void *worker_pipeline(void *shared, int step, void *in)
     return 0;
 }
 
-mm_idx_t *mm_idx_gen(mm_bseq_file_t *fp, int w, int k, int b, int flag, int mini_batch_size, int n_threads, uint64_t batch_size)
+mm_idx_t *mm_idx_gen(mm_bseq_file_t *fp, int w, int k, int b, int flag, int mini_batch_size, int n_threads, uint64_t batch_size, bool enable_sort)
 {
 	pipeline_t pl;
 	if (fp == 0 || mm_bseq_eof(fp)) return 0;
@@ -387,7 +387,8 @@ mm_idx_t *mm_idx_gen(mm_bseq_file_t *fp, int w, int k, int b, int flag, int mini
 	if (mm_verbose >= 3)
 		fprintf(stderr, "[M::%s::%.3f*%.2f] collected minimizers\n", __func__, realtime() - mm_realtime0, cputime() / (realtime() - mm_realtime0));
 
-	mm_idx_post(pl.mi, n_threads);
+	if (enable_sort)
+	  mm_idx_post(pl.mi, n_threads);
 	if (mm_verbose >= 3)
 		fprintf(stderr, "[M::%s::%.3f*%.2f] sorted minimizers\n", __func__, realtime() - mm_realtime0, cputime() / (realtime() - mm_realtime0));
 
@@ -400,7 +401,7 @@ mm_idx_t *mm_idx_build(const char *fn, int w, int k, int flag, int n_threads) //
 	mm_idx_t *mi;
 	fp = mm_bseq_open(fn);
 	if (fp == 0) return 0;
-	mi = mm_idx_gen(fp, w, k, 14, flag, 1<<18, n_threads, UINT64_MAX);
+	mi = mm_idx_gen(fp, w, k, 14, flag, 1<<18, n_threads, UINT64_MAX, true);
 	mm_bseq_close(fp);
 	return mi;
 }
@@ -605,7 +606,7 @@ void mm_idx_reader_close(mm_idx_reader_t *r)
 	free(r);
 }
 
-mm_idx_t *mm_idx_reader_read(mm_idx_reader_t *r, int n_threads)
+mm_idx_t *mm_idx_reader_read(mm_idx_reader_t *r, int n_threads, bool enable_sort)
 {
 	mm_idx_t *mi;
 	if (r->is_idx) {
@@ -613,7 +614,7 @@ mm_idx_t *mm_idx_reader_read(mm_idx_reader_t *r, int n_threads)
 		if (mi && mm_verbose >= 2 && (mi->k != r->opt.k || mi->w != r->opt.w || (mi->flag&MM_I_HPC) != (r->opt.flag&MM_I_HPC)))
 			fprintf(stderr, "[WARNING]\033[1;31m Indexing parameters (-k, -w or -H) overridden by parameters used in the prebuilt index.\033[0m\n");
 	} else
-		mi = mm_idx_gen(r->fp.seq, r->opt.w, r->opt.k, r->opt.bucket_bits, r->opt.flag, r->opt.mini_batch_size, n_threads, r->opt.batch_size);
+		mi = mm_idx_gen(r->fp.seq, r->opt.w, r->opt.k, r->opt.bucket_bits, r->opt.flag, r->opt.mini_batch_size, n_threads, r->opt.batch_size, enable_sort);
 	if (mi) {
 		if (r->fp_out) mm_idx_dump(r->fp_out, mi);
 		mi->index = r->n_parts++;

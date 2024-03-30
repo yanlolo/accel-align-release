@@ -245,7 +245,7 @@ mm_idx_reader_t *mm_idx_reader_open(const char *fn, const mm_idxopt_t *opt, cons
  *
  * @return an index on success; NULL if reaching the end of the input file
  */
-mm_idx_t *mm_idx_reader_read(mm_idx_reader_t *r, int n_threads);
+mm_idx_t *mm_idx_reader_read(mm_idx_reader_t *r, int n_threads, bool enable_sort);
 
 /**
  * Destroy/deallocate an index reader

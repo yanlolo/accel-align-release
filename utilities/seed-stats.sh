@@ -15,6 +15,8 @@ do
   for xxh in 0 32 64
   do
     ## index stats
+    mod=4294967231
+    xxh=0
     $code_dir/accindex_stats -l 32 -h ${mod} -x ${xxh} $ref
     python $code_dir/utilities/seed-stats.py ${mod}-${xxh} $out_dir
 

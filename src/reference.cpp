@@ -490,7 +490,7 @@ Reference::Reference(const char *F, unsigned _kmer_len, SType _g_stype, IndexTyp
     const char* fnw = fn.c_str();
 
     mm_idx_reader_t *idx_rdr = mm_idx_reader_open(fnw, &ipt, nullptr);
-    mi = mm_idx_reader_read(idx_rdr, n_threads);
+    mi = mm_idx_reader_read(idx_rdr, n_threads, true);
 
     load_reference(F);
   } else{

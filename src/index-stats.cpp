@@ -29,6 +29,15 @@
 
 
 #include "../include/header.h"
+
+
+typedef struct mm_idx_bucket_s {
+  mm128_v a;   // (minimizer, position) array
+  int32_t n;   // size of the _p_ array
+  uint64_t *p; // position array for minimizers appearing >1 times
+  void *h;     // hash table indexing _p_ and minimizers appearing once
+} mm_idx_bucket_t;
+
 using namespace std;
 uint64_t mod = MOD_29;    // default value is 2^29 - 1
 uint32_t mod_tmp;
@@ -559,7 +568,30 @@ int main(int ac, char **av) {
       fn += ".hash"; // output hash: xxx.hash
 
       mm_idx_reader_t *idx_rdr = mm_idx_reader_open(av[ac - 1], &ipt, fn.c_str());
-      mm_idx_reader_read(idx_rdr, n_threads);
+      idx_rdr->opt.bucket_bits = 30; // 2 * k
+      mm_idx_t *mi = mm_idx_reader_read(idx_rdr, n_threads, false);
+      int max_bin = (1<<mi->b) - 1;
+      cerr << "writing\n";
+      std::ofstream outputFile(fn.c_str());
+      stringstream ss;
+      size_t nb_keys = 0, nb_pos = 0;
+      for(int i = 0; i < max_bin; ++i){
+        mm_idx_bucket_t *b = &mi->B[i];
+        size_t nb_pos_per_key = b->a.n;
+        if (nb_pos_per_key){
+          ++nb_keys;
+          nb_pos += nb_pos_per_key;
+          ss << to_string(nb_pos_per_key) << endl;
+        }
+      }
+      outputFile << ss.str();
+      outputFile.flush();
+      outputFile.close();
+      cerr << "writing finished \n";
+      cerr << "Number of total keys (" << nb_keys << ")\n";
+      cerr << "Number of total positions (" << nb_pos << ")\n";
+
+
     } else if (enable_bs) {
       kmer = kmer_temp ? kmer_temp: 32;
       cerr << "Using kmer length " << kmer << " and step size " << step << endl;
