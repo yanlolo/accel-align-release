@@ -48,26 +48,29 @@ struct Region {
       return X.rs < Y.rs;
   }
 
-  // if last_q_pos is in range of match_interval, merge them togeter; k is the length of the interval (kmer_len)
-  void merge_interval(SType g_stype, uint32_t last_q_pos, int32_t k) {
+  /*
+   * if pos is in range of match_interval, merge them togeter; kmer_len is the length of the interval
+   */
+  void add_match_interval(SType g_stype, uint32_t pos, int32_t kmer_len) {
     if (g_stype==SType::Minimizer)
-      last_q_pos = (last_q_pos >> 1) - k + 1; //q_pos format: pos << 1 | z
+      pos = (pos >> 1) - kmer_len + 1; //q_pos format: pos << 1 | z
 
-    if (!matched_intervals.size())
-      matched_intervals.push_back(Interval{last_q_pos, last_q_pos + k});
-
-    Interval &interval = matched_intervals.back();
-    if (last_q_pos >= interval.s && last_q_pos <= interval.e) {
-      interval.e = last_q_pos + k;
+    if (!matched_intervals.size()){  // no interval yet
+      matched_intervals.push_back(Interval{pos, pos + kmer_len});
       return;
     }
 
-    //no overlap, new interval
-    matched_intervals.push_back(Interval{last_q_pos, last_q_pos + k});
+    Interval &interval = matched_intervals.back();
+    if (pos >= interval.s && pos <= interval.e) { //within range
+      interval.e = pos + kmer_len;
+    } else {  //out of range
+      matched_intervals.push_back(Interval{pos, pos + kmer_len});
+    }
+
     return;
   }
 
-  void extend_interval(const char*ref, char*Q, int rlen) {
+  void extend_interval(const char* ref, char* Q, int rlen) {
     for (size_t i = 0; i < matched_intervals.size(); ++i) {
       Interval &interval = matched_intervals[i];
 

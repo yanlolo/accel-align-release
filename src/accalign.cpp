@@ -370,12 +370,12 @@ void AccAlign::collect_seed_hits_priorityqueue(int n_m0,
     // if previous min element was same as current one, increment coverage.
     // otherwise, check if last min element's coverage was high enough to make it a candidate region
     if (min_pos == last_pos) {
-      r.merge_interval(g_stype, last_q_pos, k);
+      r.add_match_interval(g_stype, last_q_pos, k);
       ++last_cov;
     } else {
       if (last_cov >= err_threshold) {
         r.cov = last_cov;
-        r.merge_interval(g_stype, last_q_pos, k);
+        r.add_match_interval(g_stype, last_q_pos, k);
         r.qs = r.matched_intervals[0].s; //let it be the first match seed, so the left extension could be accurate
         r.qe = r.matched_intervals[0].e;
         r.rs = get_global_pos(last_pos, ref_id);
@@ -417,7 +417,7 @@ void AccAlign::collect_seed_hits_priorityqueue(int n_m0,
   if (last_pos != MAX_POS) {
     if (last_cov >= err_threshold) {
       r.cov = last_cov;
-      r.merge_interval(g_stype, last_q_pos, k);
+      r.add_match_interval(g_stype, last_q_pos, k);
       r.qs = r.matched_intervals[0].s; //let it be the first match seed, so the left extension could be accurate
       r.qe = r.matched_intervals[0].e;
       r.rs = get_global_pos(last_pos, ref_id);
@@ -579,14 +579,14 @@ void AccAlign::pigeonhole_query(char *Q,
       // if previous min element was same as current one, increment coverage.
       // otherwise, check if last min element's coverage was high enough to make it a candidate region
       if (min_pos == last_pos) {
-        r.merge_interval(g_stype, last_qs, kmer_len);
+        r.add_match_interval(g_stype, last_qs, kmer_len);
 //        r.matched_intervals.push_back(Interval{last_qs, last_qs + kmer_len});
         last_cov++;
       } else {
         if (last_cov >= err_threshold) {
           r.cov = last_cov;
           r.rs = last_pos;
-          r.merge_interval(g_stype, last_qs, kmer_len);
+          r.add_match_interval(g_stype, last_qs, kmer_len);
           r.extend_interval(get_ref(ref_id).c_str(), Q,  rlen);
 //          r.matched_intervals.push_back(Interval{last_qs, last_qs + kmer_len});
           r.qs = r.matched_intervals[0].s; //let it be the first match seed, so the left extension could be accurate
@@ -625,7 +625,7 @@ void AccAlign::pigeonhole_query(char *Q,
     if (last_cov >= err_threshold) {
       r.cov = last_cov;
       r.rs = last_pos;
-      r.merge_interval(g_stype, last_qs, kmer_len);
+      r.add_match_interval(g_stype, last_qs, kmer_len);
       r.extend_interval(get_ref(ref_id).c_str(), Q,  rlen);
 //      r.matched_intervals.push_back(Interval{last_qs, last_qs + kmer_len});
       r.qs = r.matched_intervals[0].s; //let it be the first match seed, so the left extension could be accurate
@@ -1426,21 +1426,6 @@ void AccAlign::print_sam(Read &R) {
   auto end = std::chrono::system_clock::now();
   auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
   sam_pre_time += elapsed.count();
-}
-
-
-void AccAlign::out_sam(string *s) {
-  auto start = std::chrono::system_clock::now();
-  {
-    if (sam_name.length()) {
-      sam_stream << *s;
-    } else {
-      cout << *s;
-    }
-  }
-  auto end = std::chrono::system_clock::now();
-  auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-  sam_out_time += elapsed.count();
 }
 
 static void ksw_gen_simple_mat(int m, int8_t *mat, int8_t a, int8_t b, int8_t sc_ambi) {

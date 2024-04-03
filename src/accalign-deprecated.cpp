@@ -447,14 +447,14 @@ void AccAlign::pigeonhole_query_topcov(char *Q,
       // otherwise, check if last min element's coverage was high enough to make it a candidate region
 
       if (min_pos == last_pos) {
-        merge_interval(r, last_qs, kmer_len);
+          add_match_interval(r, last_qs, kmer_len);
 //        r.matched_intervals.push_back(Interval{last_qs, last_qs + kmer_len});
         last_cov++;
       } else {
         if (nprocessed != 0) {
           r.cov = last_cov;
           r.rs = last_pos;
-          merge_interval(r, last_qs, kmer_len);
+          add_match_interval(r, last_qs, kmer_len);
           extend_interval( r, Q,  rlen,  ref_id);
 //          r.matched_intervals.push_back(Interval{last_qs, last_qs + kmer_len});
           r.qs = r.matched_intervals[0].s; //the first match seed, so left extension could be accurate
@@ -495,7 +495,7 @@ void AccAlign::pigeonhole_query_topcov(char *Q,
   if (last_pos != MAX_POS) {
     r.cov = last_cov;
     r.rs = last_pos;
-    merge_interval(r, last_qs, kmer_len);
+    add_match_interval(r, last_qs, kmer_len);
     extend_interval( r, Q,  rlen,  ref_id);
 //    r.matched_intervals.push_back(Interval{last_qs, last_qs + kmer_len});
     r.qs = r.matched_intervals[0].s; //the first match seed, so left extension could be accurate
@@ -974,4 +974,18 @@ void AccAlign::snprintf_sam(Read &R, string *s) {
   auto end = std::chrono::system_clock::now();
   auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
   sam_pre_time += elapsed.count();
+}
+
+void AccAlign::out_sam(string *s) {
+  auto start = std::chrono::system_clock::now();
+  {
+    if (sam_name.length()) {
+      sam_stream << *s;
+    } else {
+      cout << *s;
+    }
+  }
+  auto end = std::chrono::system_clock::now();
+  auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+  sam_out_time += elapsed.count();
 }

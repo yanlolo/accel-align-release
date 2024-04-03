@@ -13,11 +13,15 @@ out_dir=/home/yiqing/yan/output
 ref=/home/yiqing/data/fsva-hg37/hg37.fna
 nthreads=4
 
+## PE
+in_dir=/home/yiqing/yan/input/simulate/10m-pe-1/
 $code_dir/accalign -l 32 -R -t $nthreads -o $out_dir/rmi.sam $ref \
 $in_dir/sv-10m-100-r1.fastq $in_dir/sv-10m-100-r2.fastq
 
 ## accuracy check
 python $code_dir/utilities/match.py $in_dir/sv-10m-100-pe-align.sam $out_dir/rmi.sam $out_dir/rmi.csv  
+
+## SE
 
 ```
 
@@ -82,6 +86,25 @@ make accindex_stats
 ##### hash-based 
 ```
 sh utilities/seed-stats.sh
+
+
+code_dir=/home/yiqing/code/accel-align-release/
+ref=/home/yiqing/data/fsva-hg37/hg37.fna
+in_dir=/home/yiqing/yan/input/simulate/1m/
+out_dir=/home/yiqing/yan/output/
+nthreads=12
+rlen=100
+mod=536870879
+xxh=0
+
+$code_dir/accindex -l 32 -h ${mod} -x ${xxh} $ref
+
+time $code_dir/accalign -l 32 -H -t $nthreads -o $out_dir/hash.sam $ref \
+$in_dir/sv-1m-${rlen}-r1.fastq $in_dir/sv-1m-${rlen}-r2.fastq
+
+## accuracy check
+python $code_dir/utilities/match.py $in_dir/sv-1m-${rlen}-pe-align.sam $out_dir/hash.sam $out_dir/hash.csv
+
 ```
 
 ##### minimizer-based 
@@ -90,5 +113,6 @@ code_dir=/home/yiqing/code/accel-align-release
 ref=/home/yiqing/data/fsva-hg37/hg37.fna
 $code_dir/accindex_stats -m -k 15 -w 10 $ref
 
+python $code_dir/utilities/seed-stats.py ${mod}-${xxh} $out_dir
 
 ```

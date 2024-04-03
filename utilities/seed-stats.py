@@ -1,18 +1,22 @@
 from __future__ import division
-import pandas as pd, swifter, sys, csv
+import pandas as pd, sys, csv
 import matplotlib.pyplot as plt
+import swifter
 
 
-path = '/home/yiqing/data/fsva-hg37/hg37.fna.hash32'
+path = '/home/yiqing/data/fsva-hg37/hg37.fna.hash'
+name = 'mini'
+
+# path = '/Users/yan/Desktop/eurecom_code/accel-align-release/data/hg37-mini.fna.hash'
 # name = "mod2_30_prime_HXX0"
-# output = "/home/yiqing/yan/output/"
-name = str(sys.argv[1])
-output = str(sys.argv[2])
+output = "/home/yiqing/yan/output/"
+# name = str(sys.argv[1])
+# output = str(sys.argv[2])
 
 high_freq = 1000
 
 data = pd.read_csv(path, sep = "\t", header = None, skiprows = 2, quoting=csv.QUOTE_NONE)
-ehit = data[0].swifter.apply(lambda x: x**2).sum()
+ehit = data[0].apply(lambda x: x**2).sum()
 high_freq_data = data[data[0] > high_freq]
 
 
