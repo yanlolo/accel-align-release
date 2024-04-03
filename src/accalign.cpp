@@ -27,10 +27,9 @@ unsigned pairdis = 1000;
 string g_out, g_batch_file, g_embed_file;
 char rcsymbol[6] = "TGCAN";
 uint8_t code[256];
-bool enable_extension = true, enable_wfa_extension = false, extend_all = false, enable_bs = false, enable_minimizer = false;
+bool enable_extension = true, enable_wfa_extension = false, extend_all = false, enable_bs = false;
 int enable_rmi = 0, enable_hash = 0, enable_bin = 0;
 
-//enable_minimizer = false, enable_strobealign_extension = false
 int min_match = 21; //at leach min_match chars are matched, otherwise will regard as unalign
 int g_ncpus = 1;
 float delTime = 0, mapqTime = 0, keyvTime = 0, posvTime = 0, sortTime = 0;
@@ -2241,7 +2240,7 @@ int main(int ac, char **av) {
         opn += 1;
         flag = true;
       } else if (av[opn][1] == 'm') {
-        enable_minimizer = true;
+        g_stype = SType::Minimizer;
         opn += 1;
         flag = true;
       } else if (av[opn][1] == 's') {

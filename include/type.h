@@ -142,7 +142,6 @@ class Reference {
   mm_idx_t *mi;
   RMI rmi;  // this is fine
   unsigned kmer_len;
-  bool enable_minimizer;
   SType g_stype;
   IndexType index_type;
   bool load_accalign_index;
