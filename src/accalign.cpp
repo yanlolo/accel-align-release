@@ -96,7 +96,8 @@ gzFile &operator>>(gzFile &in, Read &r) {
 
   r.qua[strlen(r.qua) - 1] = '\0';
   r.seq[strlen(r.seq) - 1] = '\0';
-
+  r.rlen = strlen(r.seq);
+  
   r.tid = r.pos = 0;
   r.as = numeric_limits<int32_t>::min();
   r.strand = '*';
