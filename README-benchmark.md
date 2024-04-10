@@ -109,10 +109,45 @@ python $code_dir/utilities/match.py $in_dir/sv-1m-${rlen}-pe-align.sam $out_dir/
 
 ##### minimizer-based 
 ```
-code_dir=/home/yiqing/code/accel-align-release
+code_dir=/home/yiqing/code/accel-align-release/
 ref=/home/yiqing/data/fsva-hg37/hg37.fna
-$code_dir/accindex_stats -m -k 15 -w 10 $ref
+in_dir=/home/yiqing/yan/input/simulate/1m/
+out_dir=/home/yiqing/yan/output/
+nthreads=12
+rlen=100
 
+## seed stats
+$code_dir/accindex_stats -m -k 15 -w 10 $ref
 python $code_dir/utilities/seed-stats.py ${mod}-${xxh} $out_dir
 
+## index
+$code_dir/accindex -m -k 15 -w 10 $ref
+
+## align
+time $code_dir/accalign -m -t $nthreads -o $out_dir/mini.sam $ref \
+$in_dir/sv-1m-${rlen}-r1.fastq $in_dir/sv-1m-${rlen}-r2.fastq
+
+## accuracy check
+python $code_dir/utilities/match.py $in_dir/sv-1m-${rlen}-pe-align.sam $out_dir/mini.sam $out_dir/hash.csv
+
+```
+
+
+##### strobe-based
+```
+code_dir=/home/yiqing/code/accel-align-release
+ref=/home/yiqing/data/fsva-hg37/hg37.fna
+in_dir=/home/yiqing/yan/input/simulate/1m/
+out_dir=/home/yiqing/yan/output/
+nthreads=12
+rlen=100
+
+
+## index
+$code_dir/accindex --strobe-mode --create-index $ref -r $rlen
+
+##align
+time /media/ssd/ngs-data-analysis/code/accel-align-release/accalign \
+--strobe-mode --use-index /media/ssd/ngs-data-analysis/data/fsva-hg37/hg37.fna -t 12 \
+$input/1m/sv-1m-100-r.fastq  > $output/$aligner.sam
 ```
