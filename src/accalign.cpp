@@ -2184,6 +2184,12 @@ int main(int ac, char **av) {
   int kmer_temp = 0;
   IndexType index_type = IndexType::__NONE__;
 
+ if (std::string(av[opn]) == "--strobe-mode") {
+     g_stype = SType::Strobemer;
+     opn++;
+ }
+
+ if (g_stype != SType::Strobemer){
   while (opn < ac) {
     bool flag = false;
     if (av[opn][0] == '-') {
@@ -2216,7 +2222,7 @@ int main(int ac, char **av) {
         opn += 1;
         flag = true;
       } /////// indices ///////
-      else if (av[opn][1] == 'r' || av[opn][1] == 'R') {
+      else if (av[opn][1] == 'R') {
         enable_rmi = 1;
         opn += 1;
         flag = true;
@@ -2244,6 +2250,10 @@ int main(int ac, char **av) {
         g_stype = SType::Minimizer;
         opn += 1;
         flag = true;
+      } else if (av[opn][1] == 'a') {
+        g_stype = SType::Strobemer;
+        opn += 1;
+        flag = true;
       } else if (av[opn][1] == 's') {
         enable_bs = true;
         opn += 1;
@@ -2255,7 +2265,7 @@ int main(int ac, char **av) {
     if (!flag)
       break;
   }
-
+ }
   /////// check indices ///////
   if (!(enable_hash || enable_rmi || enable_bin)) {
     // default is hash
@@ -2298,12 +2308,6 @@ int main(int ac, char **av) {
 
   // load reference once
   Reference **r = new Reference*[2];
-  if (enable_bs){
-    r[0] = new Reference(av[opn], kmer_len, g_stype, index_type, 'c');
-    r[1] = new Reference(av[opn++], kmer_len, g_stype, index_type, 'g');
-  } else {
-    r[0] = new Reference(av[opn++], kmer_len, g_stype, index_type, ' ');
-  }
 
   if (enable_extension && !enable_wfa_extension)
     ksw_gen_simple_mat(5, mat, SC_MCH, SC_MIS, SC_AMBI);
@@ -2315,6 +2319,104 @@ int main(int ac, char **av) {
   StrobemerIndex *index_reference = nullptr;
   IndexParameters *index_parameters_reference = nullptr;
   MappingParameters map_params;
+
+  if (g_stype == SType::Strobemer){
+    auto opt = parse_command_line_arguments(ac, av, g_stype == SType::Strobemer);
+    logger.set_level(opt.verbose ? LOG_DEBUG : LOG_INFO);
+    logger.info() << std::setprecision(2) << std::fixed;
+
+    // Strobealign Setup
+    logger.info() << "Starting Accel-Align Setup (strobmer seed)" << std::endl;
+
+    // Load accalign Reference data structure without acalign index
+    if(opt.ref_filename.empty()) {
+      logger.error() << "Please provide a valid reference file" << std::endl;
+      return 1;
+    }
+
+    if (opt.c >= 64 || opt.c <= 0) {
+      throw BadParameter("c must be greater than 0 and less than 64");
+    }
+
+    InputBuffer input_buffer = get_input_buffer(opt);
+    if (!opt.r_set && !opt.reads_filename1.empty()) {
+      opt.r = estimate_read_length(input_buffer);
+      logger.info() << "Estimated read length: " << opt.r << " bp\n";
+    }
+    input_buffer.rewind_reset();
+    IndexParameters index_parameters = IndexParameters::from_read_length(
+        opt.r,
+        opt.k_set ? opt.k : IndexParameters::DEFAULT,
+        opt.s_set ? opt.s : IndexParameters::DEFAULT,
+        opt.l_set ? opt.l : IndexParameters::DEFAULT,
+        opt.u_set ? opt.u : IndexParameters::DEFAULT,
+        opt.c_set ? opt.c : IndexParameters::DEFAULT,
+        opt.max_seed_len_set ? opt.max_seed_len : IndexParameters::DEFAULT
+    );
+    index_parameters_reference = &index_parameters;
+    logger.debug() << index_parameters << '\n';
+    AlignmentParameters aln_params;
+    aln_params.match = opt.A;
+    aln_params.mismatch = opt.B;
+    aln_params.gap_open = opt.O;
+    aln_params.gap_extend = opt.E;
+    aln_params.end_bonus = opt.end_bonus;
+
+
+    MappingParameters map_param;
+    map_param.r = opt.r;
+    map_param.max_secondary = opt.max_secondary;
+    map_param.dropoff_threshold = opt.dropoff_threshold;
+    map_param.rescue_level = opt.rescue_level;
+    map_param.max_tries = opt.max_tries;
+    map_param.is_sam_out = opt.is_sam_out;
+    map_param.cigar_ops = opt.cigar_eqx ? CigarOps::EQX : CigarOps::M;
+    map_param.output_unmapped = opt.output_unmapped;
+    map_param.details = opt.details;
+    map_param.verify();
+
+    log_parameters(index_parameters, map_params, aln_params);
+    logger.debug() << "Threads: " << opt.n_threads << std::endl;
+
+    // Retrieve Strobealign index
+    References references;
+    Timer read_refs_timer;
+    references = References::from_fasta(opt.ref_filename);
+    if (enable_bs){
+      r[0] = new Reference(opt.ref_filename.c_str(), kmer_len, g_stype, index_type, 'c');
+      r[1] = new Reference(opt.ref_filename.c_str(), kmer_len, g_stype, index_type, 'g');
+    } else {
+      r[0] = new Reference(opt.ref_filename.c_str(), kmer_len, g_stype, index_type, ' ');
+    }
+    logger.info() << "Time reading reference: " << read_refs_timer.elapsed() << " s\n";
+
+    logger.info() << "Reference size: " << references.total_length() / 1E6 << " Mbp ("
+                  << references.size() << " contig" << (references.size() == 1 ? "" : "s")
+                  << "; largest: "
+                  << (*std::max_element(references.lengths.begin(), references.lengths.end()) / 1E6) << " Mbp)\n";
+    if (references.total_length() == 0) {
+      throw InvalidFasta("No reference sequences found");
+    }
+
+    // Read Strobealign index from the provided file
+    index_reference = new StrobemerIndex(references, index_parameters);
+
+    Timer read_index_timer;
+    std::string sti_path = opt.ref_filename + index_parameters.filename_extension();
+    logger.info() << "Reading index from " << sti_path << '\n';
+    index_reference->read(sti_path);
+    logger.info() << "Total time reading index: " << read_index_timer.elapsed() << " s\n";
+    logger.info() << "Running in " << (opt.is_SE ? "single-end" : "paired-end") << " mode" << std::endl;
+    logger.info() << "Finished Strobealign Setup" << std::endl;
+  } else {
+    if (enable_bs){
+      r[0] = new Reference(av[opn], kmer_len, g_stype, index_type, 'c');
+      r[1] = new Reference(av[opn++], kmer_len, g_stype, index_type, 'g');
+    } else {
+      r[0] = new Reference(av[opn++], kmer_len, g_stype, index_type, ' ');
+    }
+  }
+
   AccAlign f(r, index_reference, index_parameters_reference, map_params);
   f.open_output(g_out);
 
