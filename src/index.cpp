@@ -333,14 +333,7 @@ int run_strobealign(int argc, char **argv) {
     StrobemerIndex index(references, index_parameters, opt.bits);
     logger.debug() << "Bits used to index buckets: " << index.get_bits() << "\n";
     logger.info() << "Indexing ...\n";
-    Timer index_timer;
     index.populate(opt.f, opt.n_threads);
-
-    logger.info() << "  Time counting seeds: " << index.stats.elapsed_counting_hashes.count() << " s" <<  std::endl;
-    logger.info() << "  Time generating seeds: " << index.stats.elapsed_generating_seeds.count() << " s" <<  std::endl;
-    logger.info() << "  Time sorting seeds: " << index.stats.elapsed_sorting_seeds.count() << " s" <<  std::endl;
-    logger.info() << "  Time generating hash table index: " << index.stats.elapsed_hash_index.count() << " s" <<  std::endl;
-    logger.info() << "Total time indexing: " << index_timer.elapsed() << " s\n";
 
     logger.debug()
         << "Index statistics\n"
@@ -353,19 +346,6 @@ int run_strobealign(int argc, char **argv) {
         << "    >100 occurrences:  " << std::setw(14) << index.stats.tot_high_ab
             << " (" << std::setw(6) << (100.0 * index.stats.tot_high_ab / index.stats.distinct_strobemers) << "%)\n"
         ;
-    if (index.stats.tot_high_ab >= 1) {
-        logger.debug() << "Ratio distinct to highly abundant: " << index.stats.distinct_strobemers / index.stats.tot_high_ab << std::endl;
-    }
-    if (index.stats.tot_mid_ab >= 1) {
-        logger.debug() << "Ratio distinct to non distinct: " << index.stats.distinct_strobemers / (index.stats.tot_high_ab + index.stats.tot_mid_ab) << std::endl;
-    }
-    logger.debug() << "Filtered cutoff index: " << index.stats.index_cutoff << std::endl;
-    logger.debug() << "Filtered cutoff count: " << index.stats.filter_cutoff << std::endl;
-
-    if (!opt.logfile_name.empty()) {
-        index.print_diagnostics(opt.logfile_name, index_parameters.syncmer.k);
-        logger.debug() << "Finished printing log stats" << std::endl;
-    }
     if (opt.only_gen_index) {
         Timer index_writing_timer;
         std::string sti_path = opt.ref_filename + index_parameters.filename_extension();
@@ -374,6 +354,7 @@ int run_strobealign(int argc, char **argv) {
         logger.info() << "Total time writing index: " << index_writing_timer.elapsed() << " s\n";
         return EXIT_SUCCESS;
     }
+
 }
 
 
