@@ -2437,7 +2437,7 @@ int main(int ac, char **av) {
       return 0;
     }
   }
-  
+
   auto end = std::chrono::system_clock::now();
   auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
   cerr << "Time to align: " << elapsed.count() / 1000.0 << " secs\n";
