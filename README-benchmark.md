@@ -147,7 +147,9 @@ rlen=100
 $code_dir/accindex --strobe-mode --create-index $ref -r $rlen
 
 ##align
-time /media/ssd/ngs-data-analysis/code/accel-align-release/accalign \
---strobe-mode --use-index /media/ssd/ngs-data-analysis/data/fsva-hg37/hg37.fna -t 12 \
-$input/1m/sv-1m-100-r.fastq  > $output/$aligner.sam
+time $code_dir/accalign --strobe-mode --use-index $ref -t $nthreads \
+$in_dir/sv-1m-${rlen}-r1.fastq $in_dir/sv-1m-${rlen}-r2.fastq  > $out_dir/strobemer.sam
+
+## accuracy check
+python $code_dir/utilities/match.py $in_dir/sv-1m-${rlen}-pe-align.sam $out_dir/strobemer.sam $out_dir/hash.csv
 ```
