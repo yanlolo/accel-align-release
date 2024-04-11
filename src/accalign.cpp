@@ -2319,9 +2319,10 @@ int main(int ac, char **av) {
   StrobemerIndex *index_reference = nullptr;
   IndexParameters *index_parameters_reference = nullptr;
   MappingParameters map_params;
+  CommandLineOptions opt;
 
   if (g_stype == SType::Strobemer){
-    auto opt = parse_command_line_arguments(ac, av, g_stype == SType::Strobemer);
+    opt = parse_command_line_arguments(ac, av, g_stype == SType::Strobemer);
     logger.set_level(opt.verbose ? LOG_DEBUG : LOG_INFO);
     logger.info() << std::setprecision(2) << std::fixed;
 
@@ -2420,16 +2421,23 @@ int main(int ac, char **av) {
   AccAlign f(r, index_reference, index_parameters_reference, map_params);
   f.open_output(g_out);
 
-  if (opn == ac - 1) {
-//    f.fastq(av[opn], "\0", false);
-    f.tbb_fastq(av[opn], "\0");
-  } else if (opn == ac - 2) {
-//    f.fastq(av[opn], av[opn + 1], false);
-    f.tbb_fastq(av[opn], av[opn + 1]);
+  if (g_stype == SType::Strobemer){
+    if (opt.is_SE)
+      f.tbb_fastq(opt.reads_filename1.c_str(), "\0");
+    else
+      f.tbb_fastq(opt.reads_filename1.c_str(), opt.reads_filename2.c_str());
   } else {
-    print_usage();
-    return 0;
+    if (opn == ac - 1) {
+      f.tbb_fastq(av[opn], "\0");
+    } else if (opn == ac - 2) {
+      f.tbb_fastq(av[opn], av[opn + 1]);
+    } else {
+      print_usage();
+      return 0;
+    }
   }
+
+
 
   auto end = std::chrono::system_clock::now();
   auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);

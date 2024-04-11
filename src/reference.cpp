@@ -493,6 +493,8 @@ Reference::Reference(const char *F, unsigned _kmer_len, SType _g_stype, IndexTyp
     mi = mm_idx_reader_read(idx_rdr, n_threads, true);
 
     load_reference(F);
+  } else if (g_stype == SType::Strobemer){
+    load_reference(F);
   } else{
     string F_index;
     ////// case HASH //////
