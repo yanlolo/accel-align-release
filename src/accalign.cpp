@@ -2314,7 +2314,6 @@ int main(int ac, char **av) {
 
   size_t total_begin = time(NULL);
 
-  auto start = std::chrono::system_clock::now();
 
   StrobemerIndex *index_reference = nullptr;
   IndexParameters *index_parameters_reference = nullptr;
@@ -2418,6 +2417,8 @@ int main(int ac, char **av) {
     }
   }
 
+  auto start = std::chrono::system_clock::now();
+
   AccAlign f(r, index_reference, index_parameters_reference, map_params);
   f.open_output(g_out);
 
@@ -2436,9 +2437,7 @@ int main(int ac, char **av) {
       return 0;
     }
   }
-
-
-
+  
   auto end = std::chrono::system_clock::now();
   auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
   cerr << "Time to align: " << elapsed.count() / 1000.0 << " secs\n";
