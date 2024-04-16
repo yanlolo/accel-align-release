@@ -265,7 +265,6 @@ InputBuffer get_input_buffer(const CommandLineOptions& opt) {
     }
 }
 
-
 int run_strobealign(int argc, char **argv) {
     auto opt = parse_command_line_arguments(argc, argv, true);
 
@@ -354,6 +353,107 @@ int run_strobealign(int argc, char **argv) {
         logger.info() << "Total time writing index: " << index_writing_timer.elapsed() << " s\n";
         return EXIT_SUCCESS;
     }
+
+  vector<RefRandstrobe> data = index.randstrobes;
+  std::sort(data.begin(), data.end());
+   string fn = opt.ref_filename + "/keys_uint64";
+    ofstream fo_key(fn.c_str(), ios::binary);
+
+    // determine the number of valid and unique entries
+    uint64_t prec = uint64_t(-1);
+    uint64_t eof = 0;
+    size_t valid;   // the number of entries different than -1
+
+    size_t i;
+    for (i = 0; i < data.size() && data[i].position != uint32_t(-1); i++) {
+      if (data[i].hash != prec) {
+        prec = data[i].hash;
+        eof ++;
+      }
+    }
+
+    valid = i;
+    cerr << "Found " << eof << " valid keys and " << valid << " valid positions out of " << data.size() << " total\n\n";
+    fo_key.write((char *) &eof, 8);   // The number of entries is required to be a 64-bit value
+
+    // write out keys
+    try {
+      cerr << "Fast writing uint64 keys (" << eof << ")\n";
+      size_t elements = eof*3+3;
+      uint32_t *buf = new uint32_t[elements];
+      prec = uint64_t(-1);     // the previous value
+      size_t i_buf;
+      uint64_t *point;
+
+      for (i = 0, i_buf = 0; i < valid && i_buf < (elements-3); i++) {
+        if (data[i].hash != prec) {
+          //this is what we have to change
+          point = reinterpret_cast<uint64_t*>(buf+i_buf);
+          *point = data[i].hash;
+          i_buf += 2;
+          buf[i_buf++] = i;
+          prec = data[i].hash;
+        }
+      }
+      ////////// add fake last element //////////
+      buf[elements-3] = 0;
+      buf[elements-2] = 0;
+      buf[elements-1] = valid;
+      ///////////////////////////////////////////
+      fo_key.write((char *) buf, elements*sizeof(uint32_t));
+      delete[] buf;
+
+    } catch (std::bad_alloc& e) {
+      cerr << "Fall back to slow writing keys due to low mem.\n";
+      // the previous value
+      prec = uint64_t(-1);
+      uint32_t buf[3];
+      uint64_t *point = reinterpret_cast<uint64_t*>(buf);
+
+      for (size_t i = 0; i < valid; i++) {
+        if (data[i].hash != prec) {
+          *point = data[i].hash;
+          buf[2] = i;
+          fo_key.write((char *) buf, 12);
+          prec = data[i].hash;
+        }
+      }
+      ////////// add fake last element //////////
+      *point = 0;
+      buf[2] = valid;
+      fo_key.write((char *) buf, 12);
+      ///////////////////////////////////////////
+    }
+    cerr << "Key generation complete!\n\n";
+    fo_key.close();
+
+    // now, write positions
+    fn = opt.ref_filename  + "/pos_uint32";
+
+    ofstream fo_pos(fn.c_str(), ios::binary);
+
+    eof = (uint64_t) valid;
+    fo_pos.write((char *) &eof, 8);
+
+    try {
+      cerr << "Fast writing posv (" << eof << ")\n";
+      uint32_t *buf = new uint32_t[eof];
+      for (i = 0; i < eof; i++) {
+        buf[i] = data[i].position;
+      }
+      fo_pos.write((char *) buf, eof * sizeof(uint32_t));
+      delete[] buf;
+    } catch (std::bad_alloc& e) {
+      cerr << "Fall back to slow writing posv due to low mem.\n";
+      for (i = 0; i < eof; i++) {
+        fo_pos.write((char *) &data[i].position, 4);
+      }
+    }
+
+    cerr << "Position generation complete!\n\n";
+    fo_pos.close();
+
+    return true;
 
 }
 
