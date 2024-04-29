@@ -27,7 +27,7 @@ WFA-paper:
 	$(MAKE) -C WFA-paper clean all
 
 accindex: ${IDXSRC} ${HEADERS} ${HEADERSHPP}
-	${CC} -o $@ ${IDXSRC} ${ACCLDFLAGS} ${CFLAGS} -pthread
+	${CC} -o $@ ${IDXSRC} ${ACCLDFLAGS} ${CFLAGS} -pthread -lstdc++fs
 
 accindex_stats: WFA-paper ${STATSIDXSRC} ${HEADERS} ${HEADERSHPP}
 	${CC} -o $@ ${STATSIDXSRC} ${ACCLDFLAGS} ${CFLAGS} -pthread

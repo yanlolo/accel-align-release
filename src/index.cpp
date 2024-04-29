@@ -9,6 +9,7 @@
 #include <cassert>
 #include <iomanip>
 #include <chrono>
+#include <experimental/filesystem>
 #ifdef _WIN32
 #include <io.h>
 #else
@@ -30,6 +31,8 @@
 
 #include "../include/header.h"
 using namespace std;
+namespace fs = std::experimental::filesystem;
+
 uint64_t mod = MOD_29;    // default value is 2^29 - 1
 uint32_t mod_tmp;
 const unsigned step = 1;
@@ -265,6 +268,14 @@ InputBuffer get_input_buffer(const CommandLineOptions& opt) {
     }
 }
 
+string remove_extension(const string& fn) {
+  size_t last_dot = fn.find_last_of(".");
+  if (last_dot != string::npos) {
+    return fn.substr(0, last_dot);
+  }
+  return fn;
+}
+
 int run_strobealign(int argc, char **argv) {
     auto opt = parse_command_line_arguments(argc, argv, true);
 
@@ -345,18 +356,26 @@ int run_strobealign(int argc, char **argv) {
         << "    >100 occurrences:  " << std::setw(14) << index.stats.tot_high_ab
             << " (" << std::setw(6) << (100.0 * index.stats.tot_high_ab / index.stats.distinct_strobemers) << "%)\n"
         ;
-    if (opt.only_gen_index) {
-        Timer index_writing_timer;
-        std::string sti_path = opt.ref_filename + index_parameters.filename_extension();
-        logger.info() << "Writing index to " << sti_path << '\n';
-        index.write(opt.ref_filename + index_parameters.filename_extension());
-        logger.info() << "Total time writing index: " << index_writing_timer.elapsed() << " s\n";
-        return EXIT_SUCCESS;
-    }
+//    if (opt.only_gen_index) {
+//        Timer index_writing_timer;
+//        std::string sti_path = opt.ref_filename + index_parameters.filename_extension();
+//        logger.info() << "Writing index to " << sti_path << '\n';
+//        index.write(opt.ref_filename + index_parameters.filename_extension());
+//        logger.info() << "Total time writing index: " << index_writing_timer.elapsed() << " s\n";
+//        return EXIT_SUCCESS;
+//    }
+
+  //make directory
+  string prefix = remove_extension(opt.ref_filename);
+  string dir = prefix + "_index" + to_string(64);
+  if (!fs::exists(dir)) {
+    fs::create_directory(dir);
+  }
+  dir += "/";
 
   vector<RefRandstrobe> data = index.randstrobes;
   std::sort(data.begin(), data.end());
-   string fn = opt.ref_filename + "/keys_uint64";
+   string fn =  dir + "/keys_uint64";
     ofstream fo_key(fn.c_str(), ios::binary);
 
     // determine the number of valid and unique entries
@@ -428,7 +447,7 @@ int run_strobealign(int argc, char **argv) {
     fo_key.close();
 
     // now, write positions
-    fn = opt.ref_filename  + "/pos_uint32";
+    fn = dir  + "/pos_uint32";
 
     ofstream fo_pos(fn.c_str(), ios::binary);
 
