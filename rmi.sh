@@ -100,7 +100,8 @@ cd $OUTPUT_DIR                             # ----> NOW WE ARE IN hg37_index/keys
 echo -e "\n\033[1;96m [rmi.sh] \033[0mRunning key_gen..."
 if [ ! -e $keys_name ] || [ ! -e $pos_name ]; then
   # The file does not exist, so execute the command
-  "${BASE_DIR}/key_gen" -l $kmer_len $ref_name
+#  "${BASE_DIR}/key_gen" -l $kmer_len $ref_name
+  "${BASE_DIR}/accindex" --strobe-mode --create-index $ref_name -r 100
 else
   # The file exists, so ask the user before executing
   read -ep $'\033[1;33m [rmi.sh] \033[0mkey_gen output already exists. Do you want to execute the command anyway? [y/N] ' choice

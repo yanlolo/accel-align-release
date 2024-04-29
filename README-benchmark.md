@@ -114,6 +114,25 @@ python $code_dir/utilities/match.py $in_dir/sv-10m-100-pe-align.sam $out_dir/rmi
 
 ```
 
+#### 2.1.1 RMI-strobe
+
+```
+code_dir=/home/yiqing/code/accel-align-release
+ref=/home/yiqing/data/fsva-hg37/hg37.fna
+in_dir=/home/yiqing/yan/input/simulate/1m/
+out_dir=/home/yiqing/yan/output/
+nthreads=12
+rlen=100
+
+## index
+$code_dir/accindex --strobe-mode --create-index $ref -r $rlen
+
+code_dir=/home/yiqing/code/accel-align-release
+ref=/home/yiqing/data/fsva-hg37/hg37.fna
+bash $code_dir/rmi.sh -l 64 $ref
+
+```
+
 #### 2.2 Binary
 
 ```
