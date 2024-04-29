@@ -9,8 +9,9 @@
 #include "../strobealign/aln.hpp"
 
 //seedtype: how to build the seed
-enum class SType {
-  Hash,
+enum class SeedType {
+  __NONE__,
+  Kmer,
   Strobemer,
   Minimizer
 };
@@ -51,8 +52,8 @@ struct Region {
   /*
    * if pos is in range of match_interval, merge them togeter; kmer_len is the length of the interval
    */
-  void add_match_interval(SType g_stype, uint32_t pos, int32_t kmer_len) {
-    if (g_stype==SType::Minimizer)
+  void add_match_interval(SeedType g_stype, uint32_t pos, int32_t kmer_len) {
+    if (g_stype==SeedType::Minimizer)
       pos = (pos >> 1) - kmer_len + 1; //q_pos format: pos << 1 | z
 
     if (!matched_intervals.size()){  // no interval yet
@@ -142,7 +143,7 @@ class Reference {
   mm_idx_t *mi;
   RMI rmi;  // this is fine
   unsigned kmer_len;
-  SType g_stype;
+  SeedType g_stype;
   IndexType index_type;
   bool load_accalign_index;
 
@@ -151,8 +152,8 @@ class Reference {
   uint64_t mod;
   uint32_t xxh_type;
   XXHash xxh;
-//  Reference(const char *F, SType g_stype, char mode, bool load_accalign_index);
-  Reference(const char *F, unsigned _kmer_len, SType g_stype, IndexType _index_type, char _mode);
+//  Reference(const char *F, SeedType g_stype, char mode, bool load_accalign_index);
+  Reference(const char *F, unsigned _kmer_len, SeedType g_stype, IndexType _index_type, char _mode);
   ~Reference();
 };
 

@@ -474,14 +474,14 @@ uint32_t Reference::get_keyv_val64(uint64_t idx) {
   return keyv[idx*3+2];
 }
 
-Reference::Reference(const char *F, unsigned _kmer_len, SType _g_stype, IndexType _index_type, char _mode):
+Reference::Reference(const char *F, unsigned _kmer_len, SeedType _g_stype, IndexType _index_type, char _mode):
     kmer_len(_kmer_len),
     g_stype(_g_stype),
     index_type(_index_type),
     mode(_mode) {
   auto start = std::chrono::system_clock::now();
 
-  if (g_stype == SType::Minimizer){
+  if (g_stype == SeedType::Minimizer){
     int n_threads = 3;
 
     mm_idxopt_t ipt;
@@ -493,7 +493,7 @@ Reference::Reference(const char *F, unsigned _kmer_len, SType _g_stype, IndexTyp
     mi = mm_idx_reader_read(idx_rdr, n_threads, true);
 
     load_reference(F);
-  } else if (g_stype == SType::Strobemer){
+  } else if (g_stype == SeedType::Strobemer){
     load_reference(F);
   } else{
     string F_index;
@@ -549,7 +549,7 @@ Reference::Reference(const char *F, unsigned _kmer_len, SType _g_stype, IndexTyp
 }
 
 Reference::~Reference() {
-  if (g_stype == SType::Minimizer){
+  if (g_stype == SeedType::Minimizer){
     mm_idx_destroy(mi);
   } else {
     size_t posv_sz = (size_t) nposv * sizeof(uint32_t);

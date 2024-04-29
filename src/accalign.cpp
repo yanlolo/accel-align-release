@@ -28,14 +28,13 @@ string g_out, g_batch_file, g_embed_file;
 char rcsymbol[6] = "TGCAN";
 uint8_t code[256];
 bool enable_extension = true, enable_wfa_extension = false, extend_all = false, enable_bs = false;
-int enable_rmi = 0, enable_hash = 0, enable_bin = 0;
 
 int min_match = 21; //at leach min_match chars are matched, otherwise will regard as unalign
 int g_ncpus = 1;
 float delTime = 0, mapqTime = 0, keyvTime = 0, posvTime = 0, sortTime = 0;
 float mm_cal = 0, mm_fetch = 0, mm_hit_cnt = 0;
 int8_t mat[25];
-SType g_stype = SType::Hash;
+SeedType g_stype = SeedType::Kmer;
 
 // Strobealign specific
 static Logger& logger = Logger::get();
@@ -183,12 +182,12 @@ void AccAlign::pghole_wrapper(Read &R,
   size_t rlen = strlen(R.seq);
   int err_threshold = 2;
 
-  if(g_stype == SType::Strobemer) {
+  if(g_stype == SeedType::Strobemer) {
     // Retrieve Candidate Regions using Strobemer
     find_candidate_positions_using_strobealign(R.seq, fcandidate_regions, false, ref_id);
     find_candidate_positions_using_strobealign(R.seq, rcandidate_regions, true, ref_id);
     return;
-  } else if (g_stype == SType::Minimizer){
+  } else if (g_stype == SeedType::Minimizer){
     // Retrieve Candidate Regions using minimizer
     mm128_v mv = {0, 0, 0};
     void *km = nullptr;
@@ -208,7 +207,7 @@ void AccAlign::pghole_wrapper(Read &R,
       fetch_candidates(mv, mid_occ, rlen, err_threshold, fcandidate_regions, rcandidate_regions, fbest, rbest, ref_id);
     }
     delete mv.a;
-  } else if (g_stype == SType::Hash){
+  } else if (g_stype == SeedType::Kmer){
     // Retrieve Candidate Regions using hash-index
     bool high_freq = false;
 //    unsigned kmer_step = kmer_len;
@@ -685,7 +684,7 @@ void AccAlign::pghole_wrapper_pair(Read &mate1, Read &mate2,
   int mac_occ_1 = MAX_OCC, mac_occ_2 = MAX_OCC;
   int err_threshold = 2;
 
-  if(g_stype == SType::Strobemer) {
+  if(g_stype == SeedType::Strobemer) {
     // Retrieve Candidate Regions using Strobemer
     find_candidate_positions_using_strobealign(mate1.seq, region_f1, false, ref_id);
     find_candidate_positions_using_strobealign(mate1.seq, region_r1, true, ref_id);
@@ -700,7 +699,7 @@ void AccAlign::pghole_wrapper_pair(Read &mate1, Read &mate2,
     has_f1r2 = pairdis_filter(region_f1, region_r2, flag_f1, flag_r2, best_f1, next_f1, best_r2, next_r2);
     has_r1f2 = pairdis_filter(region_r1, region_f2, flag_r1, flag_f2, best_r1, next_r1, best_f2, next_f2);
 
-  } else if (g_stype == SType::Minimizer) {
+  } else if (g_stype == SeedType::Minimizer) {
     //  mm(mate1.fwd, min_rlen, 2, region_f1, region_r1, best_f1, best_r1);
     //  mm(mate2.fwd, min_rlen, 2, region_f2, region_r2, best_f2, best_r2);
 
@@ -798,7 +797,7 @@ void AccAlign::pghole_wrapper_pair(Read &mate1, Read &mate2,
 
     kfree(km, mv1.a);
     kfree(km, mv2.a);
-  } else if (g_stype == SType::Hash) {
+  } else if (g_stype == SeedType::Kmer) {
 
     while (slide1 < slide && slide2 < slide) {
 //  while (kmer_step1 > 0 && kmer_step2 > 0) {
@@ -2182,14 +2181,14 @@ int main(int ac, char **av) {
 
   int opn = 1;
   int kmer_temp = 0;
-  IndexType index_type = IndexType::__NONE__;
+  IndexType index_type = IndexType::HASH_IDX; //default is hash index
 
  if (std::string(av[opn]) == "--strobe-mode") {
-     g_stype = SType::Strobemer;
+     g_stype = SeedType::Strobemer;
      opn++;
  }
 
- if (g_stype != SType::Strobemer){
+ if (g_stype != SeedType::Strobemer){
   while (opn < ac) {
     bool flag = false;
     if (av[opn][0] == '-') {
@@ -2223,21 +2222,21 @@ int main(int ac, char **av) {
         flag = true;
       } /////// indices ///////
       else if (av[opn][1] == 'R') {
-        enable_rmi = 1;
         opn += 1;
         flag = true;
         index_type = IndexType::RMI_IDX;
+        cerr << "Using RMI index\n";
       } else if (av[opn][1] == 'B') {
-        enable_bin = 1;
         opn += 1;
         flag = true;
         index_type = IndexType::BINARY_IDX;
+        cerr << "Using binary search\n";
       }else if (av[opn][1] == 'H') {
-        enable_hash = 1;
         opn += 1;
         flag = true;
         index_type = IndexType::HASH_IDX;
-      }//////////////////////
+        cerr << "Using hash table\n";
+      }
       else if (av[opn][1] == 'w') {
         enable_wfa_extension = true;
         opn += 1;
@@ -2247,11 +2246,11 @@ int main(int ac, char **av) {
         opn += 1;
         flag = true;
       } else if (av[opn][1] == 'm') {
-        g_stype = SType::Minimizer;
+        g_stype = SeedType::Minimizer;
         opn += 1;
         flag = true;
       } else if (av[opn][1] == 'a') {
-        g_stype = SType::Strobemer;
+        g_stype = SeedType::Strobemer;
         opn += 1;
         flag = true;
       } else if (av[opn][1] == 's') {
@@ -2266,35 +2265,6 @@ int main(int ac, char **av) {
       break;
   }
  }
-  /////// check indices ///////
-  if (!(enable_hash || enable_rmi || enable_bin)) {
-    // default is hash
-    enable_hash = 1;
-    index_type = IndexType::HASH_IDX;
-  }
-  if ((enable_hash + enable_rmi + enable_bin)>1) {
-    // too many indices! abort
-    cerr << "Please, select only one index!\n";
-    print_usage();
-    // exit
-    return 1;
-  }
-  switch (index_type) {
-    case IndexType::RMI_IDX:
-      cerr << "Using RMI index\n";
-      break;
-    case IndexType::HASH_IDX:
-      cerr << "Using hash table\n";
-      break;
-    case IndexType::BINARY_IDX:
-      cerr << "Using binary search\n";
-      break;
-    default:
-      // this should never happen
-      cerr << "*panic*\n";
-      exit(1);
-  }
-  /////////////////////////////
 
   if (kmer_temp != 0)
     kmer_len = kmer_temp;
@@ -2314,14 +2284,13 @@ int main(int ac, char **av) {
 
   size_t total_begin = time(NULL);
 
-
   StrobemerIndex *index_reference = nullptr;
   IndexParameters *index_parameters_reference = nullptr;
   MappingParameters map_params;
   CommandLineOptions opt;
 
-  if (g_stype == SType::Strobemer){
-    opt = parse_command_line_arguments(ac, av, g_stype == SType::Strobemer);
+  if (g_stype == SeedType::Strobemer){
+    opt = parse_command_line_arguments(ac, av, g_stype == SeedType::Strobemer);
     logger.set_level(opt.verbose ? LOG_DEBUG : LOG_INFO);
     logger.info() << std::setprecision(2) << std::fixed;
 
@@ -2422,7 +2391,7 @@ int main(int ac, char **av) {
   AccAlign f(r, index_reference, index_parameters_reference, map_params);
   f.open_output(g_out);
 
-  if (g_stype == SType::Strobemer){
+  if (g_stype == SeedType::Strobemer){
     if (opt.is_SE)
       f.tbb_fastq(opt.reads_filename1.c_str(), "\0");
     else
