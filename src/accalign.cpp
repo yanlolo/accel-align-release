@@ -36,9 +36,6 @@ float mm_cal = 0, mm_fetch = 0, mm_hit_cnt = 0;
 int8_t mat[25];
 SeedType g_stype = SeedType::Kmer;
 
-// Strobealign specific
-static Logger& logger = Logger::get();
-
 void make_code(void) {
   for (size_t i = 0; i < 256; i++)
     code[i] = 4;
@@ -2135,7 +2132,7 @@ InputBuffer get_input_buffer(const CommandLineOptions& opt) {
 }
 
 void log_parameters(const IndexParameters& index_parameters, const MappingParameters& map_param, const AlignmentParameters& aln_params) {
-  logger.debug() << "Using" << std::endl
+  cerr << "Using" << std::endl
                  << "k: " << index_parameters.syncmer.k << std::endl
                  << "s: " << index_parameters.syncmer.s << std::endl
                  << "w_min: " << index_parameters.randstrobe.w_min << std::endl
@@ -2291,15 +2288,12 @@ int main(int ac, char **av) {
 
   if (g_stype == SeedType::Strobemer){
     opt = parse_command_line_arguments(ac, av, g_stype == SeedType::Strobemer);
-    logger.set_level(opt.verbose ? LOG_DEBUG : LOG_INFO);
-    logger.info() << std::setprecision(2) << std::fixed;
 
-    // Strobealign Setup
-    logger.info() << "Starting Accel-Align Setup (strobmer seed)" << std::endl;
+    cerr << "Starting Accel-Align Setup (strobmer seed)" << std::endl;
 
     // Load accalign Reference data structure without acalign index
     if(opt.ref_filename.empty()) {
-      logger.error() << "Please provide a valid reference file" << std::endl;
+      cerr << "Please provide a valid reference file" << std::endl;
       return 1;
     }
 
@@ -2310,7 +2304,7 @@ int main(int ac, char **av) {
     InputBuffer input_buffer = get_input_buffer(opt);
     if (!opt.r_set && !opt.reads_filename1.empty()) {
       opt.r = estimate_read_length(input_buffer);
-      logger.info() << "Estimated read length: " << opt.r << " bp\n";
+      cerr << "Estimated read length: " << opt.r << " bp\n";
     }
     input_buffer.rewind_reset();
     IndexParameters index_parameters = IndexParameters::from_read_length(
@@ -2323,14 +2317,12 @@ int main(int ac, char **av) {
         opt.max_seed_len_set ? opt.max_seed_len : IndexParameters::DEFAULT
     );
     index_parameters_reference = &index_parameters;
-    logger.debug() << index_parameters << '\n';
     AlignmentParameters aln_params;
     aln_params.match = opt.A;
     aln_params.mismatch = opt.B;
     aln_params.gap_open = opt.O;
     aln_params.gap_extend = opt.E;
     aln_params.end_bonus = opt.end_bonus;
-
 
     MappingParameters map_param;
     map_param.r = opt.r;
@@ -2345,11 +2337,10 @@ int main(int ac, char **av) {
     map_param.verify();
 
     log_parameters(index_parameters, map_params, aln_params);
-    logger.debug() << "Threads: " << opt.n_threads << std::endl;
+    cerr << "Threads: " << opt.n_threads << std::endl;
 
     // Retrieve Strobealign index
     References references;
-    Timer read_refs_timer;
     references = References::from_fasta(opt.ref_filename);
     if (enable_bs){
       r[0] = new Reference(opt.ref_filename.c_str(), kmer_len, g_stype, index_type, 'c');
@@ -2357,26 +2348,18 @@ int main(int ac, char **av) {
     } else {
       r[0] = new Reference(opt.ref_filename.c_str(), kmer_len, g_stype, index_type, ' ');
     }
-    logger.info() << "Time reading reference: " << read_refs_timer.elapsed() << " s\n";
-
-    logger.info() << "Reference size: " << references.total_length() / 1E6 << " Mbp ("
+    cerr << "Reference size: " << references.total_length() / 1E6 << " Mbp ("
                   << references.size() << " contig" << (references.size() == 1 ? "" : "s")
                   << "; largest: "
                   << (*std::max_element(references.lengths.begin(), references.lengths.end()) / 1E6) << " Mbp)\n";
     if (references.total_length() == 0) {
       throw InvalidFasta("No reference sequences found");
     }
+    index_reference = new StrobemerIndex(references, index_parameters);     // Read Strobealign index from the provided file
 
-    // Read Strobealign index from the provided file
-    index_reference = new StrobemerIndex(references, index_parameters);
-
-    Timer read_index_timer;
     std::string sti_path = opt.ref_filename + index_parameters.filename_extension();
-    logger.info() << "Reading index from " << sti_path << '\n';
+    cerr << "Reading index from " << sti_path << '\n';
     index_reference->read(sti_path);
-    logger.info() << "Total time reading index: " << read_index_timer.elapsed() << " s\n";
-    logger.info() << "Running in " << (opt.is_SE ? "single-end" : "paired-end") << " mode" << std::endl;
-    logger.info() << "Finished Strobealign Setup" << std::endl;
   } else {
     if (enable_bs){
       r[0] = new Reference(av[opn], kmer_len, g_stype, index_type, 'c');
