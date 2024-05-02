@@ -73,6 +73,5 @@ struct CommandLineOptions {
 
 };
 
-CommandLineOptions parse_command_line_arguments(int argc, char **argv, bool use_strobealign);
-CommandLineOptions do_accalign_setup(args::ArgumentParser parser, int argc, char **pString);
+CommandLineOptions parse_command_line_arguments(int argc, char **argv);
 CommandLineOptions do_strobealign_setup(args::ArgumentParser parser, int i, char **pString);

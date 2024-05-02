@@ -5,7 +5,7 @@
 class Version {};
 
 
-CommandLineOptions parse_command_line_arguments(int argc, char **argv, bool use_strobealign) {
+CommandLineOptions parse_command_line_arguments(int argc, char **argv) {
 
   args::ArgumentParser parser("Accel-Align with Support for Strobealign Extension");
   parser.helpParams.showTerminator = false;
@@ -17,11 +17,7 @@ CommandLineOptions parse_command_line_arguments(int argc, char **argv, bool use_
   args::HelpFlag help(parser, "help", "Print help and exit", {'h', "help"});
   args::ActionFlag version(parser, "version", "Print version and exit", {"version"}, []() { throw Version(); });
 
-
-  if(use_strobealign) {
-    return do_strobealign_setup(parser, argc, argv);
-  }
-  return do_accalign_setup(parser, argc, argv);
+  return do_strobealign_setup(parser, argc, argv);
 }
 
 
@@ -167,111 +163,6 @@ CommandLineOptions do_strobealign_setup(args::ArgumentParser parser, int argc, c
   if (opt.only_gen_index && !(opt.r_set || !opt.reads_filename1.empty())) {
     std::cerr << "Error: The target read length needs to be known when generating an index.\n"
                  "Use -r to set it explicitly or let the program estimate it by providing at least one read file.\n";
-    exit(EXIT_FAILURE);
-  }
-
-  return opt;
-}
-
-
-
-CommandLineOptions do_accalign_setup(args::ArgumentParser parser, int argc, char **argv){
-
-  args::Flag use_strobealign(parser, "use_strobealign", "Use Strobealign mode", { "strobe-mode" });
-
-  // t
-  args::ValueFlag<int> threads(parser, "INT", "Number of threads [3]", {'t', "threads"});
-
-  // l
-  args::ValueFlag<int> l(parser, "INT", "k-mer size", {'l'});
-
-  // k
-  args::ValueFlag<int> k(parser, "INT", "k-mer step", {'k'});
-
-  // o
-  args::ValueFlag<std::string> o(parser, "STRING", "Name of the output file", {'o'});
-
-  // e
-  args::ValueFlag<std::string> e(parser, "STRING", "Name of embed file", {'e'});
-
-  // b
-  args::ValueFlag<std::string> b(parser, "STRING", "Name of batch file", {'b'});
-
-  // p
-  args::ValueFlag<int> p(parser, "INT", "Paired end distance", {'p'});
-
-  // x
-  args::Flag x(parser, "x", "Alignment-free mode", {'x'});
-
-  // w
-  args::Flag w(parser, "w", "Use WFA for extension. KSW used by default", {'w'});
-
-  // d
-  args::Flag d(parser, "d", "Disable embedding, extend all candidates from seeding (this mode is super slow, only for benchmark)", {'d'});
-
-  // m
-  args::Flag m(parser, "m", "Enable Minimizer", {'m'});
-
-  // s
-  args::Flag s(parser, "s", "Use bisulfite sequencing alignment mode", {'s'});
-
-  args::Positional<std::string> ref_filename(parser, "reference", "Reference in FASTA format", args::Options::Required);
-  args::Positional<std::string> reads1_filename(parser, "reads1", "Reads 1 in FASTA or FASTQ format, optionally gzip compressed");
-  args::Positional<std::string> reads2_filename(parser, "reads2", "Reads 2 in FASTA or FASTQ format, optionally gzip compressed");
-
-  try {
-    parser.ParseCLI(argc, argv);
-  }
-  catch (const args::Completion& e) {
-    std::cout << e.what();
-    exit(EXIT_SUCCESS);
-  }
-  catch (const args::Help&) {
-    std::cout << parser;
-    exit(EXIT_SUCCESS);
-  }
-  catch (const Version& e) {
-    std::cout << "Version 0.1" << std::endl;
-    exit(EXIT_SUCCESS);
-  }
-  catch (const args::Error& e) {
-    std::cerr << parser;
-    std::cerr << "Error: " << e.what() << std::endl;
-    exit(EXIT_FAILURE);
-  }
-
-  CommandLineOptions opt;
-
-  // Threading
-  if (threads) { opt.n_threads = args::get(threads); }
-
-  if(l) {opt.l = args::get(l);}
-  if(k) {opt.k = args::get(k);}
-  if(o) {opt.o = args::get(o);}
-  if(e) {opt.e = args::get(e);}
-  if(b) {opt.b = args::get(b);}
-  if(p) {opt.p = args::get(p);}
-  if(x) {opt.x = false;}
-  if(w) {opt.w = true;}
-  if(d) {opt.d = true;}
-  if(m) {opt.m = true;}
-  if(s) {opt.bs = true;}
-
-
-  // Reference and read files
-  opt.ref_filename = args::get(ref_filename);
-  opt.reads_filename1 = args::get(reads1_filename);
-
-  if (reads2_filename) {
-    opt.reads_filename2 = args::get(reads2_filename);
-    opt.is_SE = false;
-  } else {
-    opt.reads_filename2 = std::string();
-    opt.is_SE = true;
-  }
-
-  if (opt.reads_filename1.empty() && !opt.only_gen_index) {
-    std::cerr << "Error: At least one file with reads must be specified." << std::endl;
     exit(EXIT_FAILURE);
   }
 

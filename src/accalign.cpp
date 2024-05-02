@@ -2287,7 +2287,7 @@ int main(int ac, char **av) {
   CommandLineOptions opt;
 
   if (g_stype == SeedType::Strobemer){
-    opt = parse_command_line_arguments(ac, av, g_stype == SeedType::Strobemer);
+    opt = parse_command_line_arguments(ac, av);
 
     cerr << "Starting Accel-Align Setup (strobmer seed)" << std::endl;
 

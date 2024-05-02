@@ -244,7 +244,7 @@ InputBuffer get_input_buffer(const CommandLineOptions& opt) {
 
 
 int run_strobealign(int argc, char **argv) {
-  auto opt = parse_command_line_arguments(argc, argv, true);
+  auto opt = parse_command_line_arguments(argc, argv);
 
   logger.set_level(opt.verbose ? LOG_DEBUG : LOG_INFO);
   logger.info() << std::setprecision(2) << std::fixed;
