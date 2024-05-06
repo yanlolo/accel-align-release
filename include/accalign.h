@@ -109,6 +109,10 @@ class AccAlign {
     return refs[ref_id]->mi;
   };
 
+  StrobemerIndex *get_strobe_index(int ref_id){
+    return refs[ref_id]->strobe_index;
+  };
+
   void get_lookup(int ref_id, uint64_t hash, size_t* b, size_t* e) {
     refs[ref_id]->index_lookup(hash,b,e);
   }
@@ -136,7 +140,7 @@ class AccAlign {
   void fetch_candidates(mm128_v &mv, int32_t mid_occ, size_t rlen, int err_threshold,
                         vector<Region> &fcandidate_regions, vector<Region> &rcandidate_regions,
                         unsigned &fbest, unsigned &rbest, int ref_id);
-  AccAlign(Reference **r, StrobemerIndex *_index_reference, IndexParameters *_index_parameters_reference,MappingParameters _map_params);
+  AccAlign(Reference **r, IndexParameters *_index_parameters_reference,MappingParameters _map_params);
   ~AccAlign();
 };
 

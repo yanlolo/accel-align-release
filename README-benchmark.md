@@ -76,8 +76,8 @@ $code_dir/accindex_stats --strobe-mode --create-index $ref -r $rlen
 $code_dir/accindex --strobe-mode --create-index $ref -r $rlen
 
 ##align
-time $code_dir/accalign --strobe-mode --use-index $ref -t $nthreads \
-$in_dir/sv-1m-${rlen}-r1.fastq $in_dir/sv-1m-${rlen}-r2.fastq  > $out_dir/strobemer.sam
+time $code_dir/accalign --strobe-mode -t $nthreads $ref \
+$in_dir/sv-1m-${rlen}-r1.fastq $in_dir/sv-1m-${rlen}-r2.fastq > $out_dir/strobemer.sam
 
 ## accuracy check
 python $code_dir/utilities/match.py $in_dir/sv-1m-${rlen}-pe-align.sam $out_dir/strobemer.sam $out_dir/hash.csv

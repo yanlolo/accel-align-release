@@ -474,11 +474,12 @@ uint32_t Reference::get_keyv_val64(uint64_t idx) {
   return keyv[idx*3+2];
 }
 
-Reference::Reference(const char *F, unsigned _kmer_len, SeedType _g_stype, IndexType _index_type, char _mode):
+Reference::Reference(const char *F, unsigned _kmer_len, SeedType _g_stype, IndexType _index_type, char _mode, IndexParameters *_index_parameters_reference):
     kmer_len(_kmer_len),
     g_stype(_g_stype),
     index_type(_index_type),
-    mode(_mode) {
+    mode(_mode),
+    index_parameters_reference(_index_parameters_reference) {
   auto start = std::chrono::system_clock::now();
 
   if (g_stype == SeedType::Minimizer){
@@ -494,6 +495,14 @@ Reference::Reference(const char *F, unsigned _kmer_len, SeedType _g_stype, Index
 
     load_reference(F);
   } else if (g_stype == SeedType::Strobemer){
+    // Retrieve Strobealign index
+    References references;
+    references = References::from_fasta(F);
+    strobe_index = new StrobemerIndex(references, *index_parameters_reference);
+    std::string sti_path = F + index_parameters_reference->filename_extension();
+    cerr << "Reading index from " << sti_path << '\n';
+    strobe_index->read(sti_path);
+
     load_reference(F);
   } else{
     string F_index;
@@ -551,7 +560,9 @@ Reference::Reference(const char *F, unsigned _kmer_len, SeedType _g_stype, Index
 Reference::~Reference() {
   if (g_stype == SeedType::Minimizer){
     mm_idx_destroy(mi);
-  } else {
+  } else if (g_stype == SeedType::Strobemer){
+    delete strobe_index;
+  }else{
     size_t posv_sz = (size_t) nposv * sizeof(uint32_t);
     uint64_t keyv_sz = (uint64_t) nkeyv * sizeof(uint32_t);
     int r;

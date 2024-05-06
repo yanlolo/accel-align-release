@@ -20,7 +20,18 @@ CommandLineOptions parse_command_line_arguments(int argc, char **argv) {
   return do_strobealign_setup(parser, argc, argv);
 }
 
-
+InputBuffer get_input_buffer(const CommandLineOptions& opt) {
+  if (opt.is_SE) {
+    return InputBuffer(opt.reads_filename1, "", opt.chunk_size, false);
+  } else if (opt.is_interleaved) {
+    if (opt.reads_filename2 != "") {
+      throw BadParameter("Cannot specify both --interleaved and specify two read files");
+    }
+    return InputBuffer(opt.reads_filename1, "", opt.chunk_size, true);
+  } else {
+    return InputBuffer(opt.reads_filename1, opt.reads_filename2, opt.chunk_size, false);
+  }
+}
 
 CommandLineOptions do_strobealign_setup(args::ArgumentParser parser, int argc, char **argv) {
   // Threading
@@ -165,6 +176,23 @@ CommandLineOptions do_strobealign_setup(args::ArgumentParser parser, int argc, c
                  "Use -r to set it explicitly or let the program estimate it by providing at least one read file.\n";
     exit(EXIT_FAILURE);
   }
+
+  if(opt.ref_filename.empty()) {
+    std::cerr << "Please provide a valid reference file" << std::endl;
+    exit(EXIT_FAILURE);
+  }
+
+  if (opt.c >= 64 || opt.c <= 0) {
+    std::cerr << "c must be greater than 0 and less than 64" << std::endl;
+    exit(EXIT_FAILURE);
+  }
+
+  InputBuffer input_buffer = get_input_buffer(opt);
+  if (!opt.r_set && !opt.reads_filename1.empty()) {
+    opt.r = estimate_read_length(input_buffer);
+    std::cerr << "Estimated read length: " << opt.r << " bp\n";
+  }
+  input_buffer.rewind_reset();
 
   return opt;
 }

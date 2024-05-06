@@ -7,6 +7,7 @@
 #include "../strobealign/strobe-index.hpp"
 #include "../strobealign/indexparameters.hpp"
 #include "../strobealign/aln.hpp"
+#include "../strobealign/cmdline.hpp"
 
 //seedtype: how to build the seed
 enum class SeedType {
@@ -146,6 +147,9 @@ class Reference {
   SeedType g_stype;
   IndexType index_type;
   bool load_accalign_index;
+  CommandLineOptions opt;
+  StrobemerIndex *strobe_index;
+  IndexParameters *index_parameters_reference;
 
   char mode; // 'c' c-> t; 'g' g->a; ' ' original
   // for classic index
@@ -153,7 +157,7 @@ class Reference {
   uint32_t xxh_type;
   XXHash xxh;
 //  Reference(const char *F, SeedType g_stype, char mode, bool load_accalign_index);
-  Reference(const char *F, unsigned _kmer_len, SeedType g_stype, IndexType _index_type, char _mode);
+  Reference(const char *F, unsigned _kmer_len, SeedType g_stype, IndexType _index_type, char _mode,  IndexParameters *index_parameters_reference);
   ~Reference();
 };
 

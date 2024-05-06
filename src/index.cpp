@@ -18,7 +18,6 @@
 
 #include "../strobealign/refs.hpp"
 #include "../strobealign/exceptions.hpp"
-#include "../strobealign/cmdline.hpp"
 #include "../strobealign/strobe-index.hpp"
 #include "../strobealign/pc.hpp"
 #include "../strobealign/aln.hpp"
@@ -253,19 +252,6 @@ bool avx2_enabled() {
 #else
     return false;
 #endif
-}
-
-InputBuffer get_input_buffer(const CommandLineOptions& opt) {
-    if (opt.is_SE) {
-        return InputBuffer(opt.reads_filename1, "", opt.chunk_size, false);
-    } else if (opt.is_interleaved) {
-        if (opt.reads_filename2 != "") {
-            throw BadParameter("Cannot specify both --interleaved and specify two read files");
-        }
-        return InputBuffer(opt.reads_filename1, "", opt.chunk_size, true);
-    } else {
-        return InputBuffer(opt.reads_filename1, opt.reads_filename2, opt.chunk_size, false);
-    }
 }
 
 string remove_extension(const string& fn) {

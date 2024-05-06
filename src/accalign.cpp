@@ -9,7 +9,6 @@
 
 #include "../strobealign/refs.hpp"
 #include "../strobealign/exceptions.hpp"
-#include "../strobealign/cmdline.hpp"
 #include "../strobealign/pc.hpp"
 #include "../strobealign/aln.hpp"
 #include "../strobealign/readlen.hpp"
@@ -248,10 +247,10 @@ void AccAlign::pghole_wrapper(Read &R,
 // @param direction: "false", if forward strang, "true" if reverse strang
 void AccAlign::find_candidate_positions_using_strobealign(char *seq, vector<Region> &candidate_regions, bool direction, int ref_id){
   auto query_randstrobes = randstrobes_query(string(seq), *index_parameters_reference);
-  auto [nonrepetitive_fraction, nams] = find_nams(query_randstrobes, *index_reference);
+  auto [nonrepetitive_fraction, nams] = find_nams(query_randstrobes, *get_strobe_index(ref_id));
 
   if (nams.empty() || nonrepetitive_fraction < 0.7) {
-    nams = find_nams_rescue(query_randstrobes, *index_reference, map_params.rescue_cutoff);
+    nams = find_nams_rescue(query_randstrobes, *get_strobe_index(ref_id), map_params.rescue_cutoff);
   }
 
 //  std::sort(nams.begin(), nams.end(), [](const Nam &a, const Nam &b) -> bool {
@@ -1892,10 +1891,8 @@ void AccAlign::close_output() {
   }
 }
 
-AccAlign::AccAlign(Reference **r, StrobemerIndex *_index_reference,
-                   IndexParameters *_index_parameters_reference,MappingParameters _map_params):
-                   refs(r), index_reference(_index_reference),
-                   index_parameters_reference(_index_parameters_reference), map_params(_map_params)
+AccAlign::AccAlign(Reference **r, IndexParameters *_index_parameters_reference,MappingParameters _map_params):
+                   refs(r), index_parameters_reference(_index_parameters_reference), map_params(_map_params)
 //    ref(r.ref), name(r.name),
 //    offset(r.offset),
 //    keyv(r.keyv), posv(r.posv),
@@ -2117,38 +2114,6 @@ bool AccAlign::tbb_fastq(const char *F1, const char *F2) {
   return true;
 }
 
-
-InputBuffer get_input_buffer(const CommandLineOptions& opt) {
-  if (opt.is_SE) {
-    return InputBuffer(opt.reads_filename1, "", opt.chunk_size, false);
-  } else if (opt.is_interleaved) {
-    if (opt.reads_filename2 != "") {
-      throw BadParameter("Cannot specify both --interleaved and specify two read files");
-    }
-    return InputBuffer(opt.reads_filename1, "", opt.chunk_size, true);
-  } else {
-    return InputBuffer(opt.reads_filename1, opt.reads_filename2, opt.chunk_size, false);
-  }
-}
-
-void log_parameters(const IndexParameters& index_parameters, const MappingParameters& map_param, const AlignmentParameters& aln_params) {
-  cerr << "Using" << std::endl
-                 << "k: " << index_parameters.syncmer.k << std::endl
-                 << "s: " << index_parameters.syncmer.s << std::endl
-                 << "w_min: " << index_parameters.randstrobe.w_min << std::endl
-                 << "w_max: " << index_parameters.randstrobe.w_max << std::endl
-                 << "Read length (r): " << map_param.r << std::endl
-                 << "Maximum seed length: " << index_parameters.randstrobe.max_dist + index_parameters.syncmer.k << std::endl
-                 << "R: " << map_param.rescue_level << std::endl
-                 << "Expected [w_min, w_max] in #syncmers: [" << index_parameters.randstrobe.w_min << ", " << index_parameters.randstrobe.w_max << "]" << std::endl
-                 << "Expected [w_min, w_max] in #nucleotides: [" << (index_parameters.syncmer.k - index_parameters.syncmer.s + 1) * index_parameters.randstrobe.w_min << ", " << (index_parameters.syncmer.k - index_parameters.syncmer.s + 1) * index_parameters.randstrobe.w_max << "]" << std::endl
-                 << "A: " << aln_params.match << std::endl
-                 << "B: " << aln_params.mismatch << std::endl
-                 << "O: " << aln_params.gap_open << std::endl
-                 << "E: " << aln_params.gap_extend << std::endl
-                 << "end bonus: " << aln_params.end_bonus << '\n';
-}
-
 /*
  * Return formatted SAM header as a string
  */
@@ -2185,7 +2150,6 @@ int main(int ac, char **av) {
      opn++;
  }
 
- if (g_stype != SeedType::Strobemer){
   while (opn < ac) {
     bool flag = false;
     if (av[opn][0] == '-') {
@@ -2261,7 +2225,6 @@ int main(int ac, char **av) {
     if (!flag)
       break;
   }
- }
 
   if (kmer_temp != 0)
     kmer_len = kmer_temp;
@@ -2281,7 +2244,7 @@ int main(int ac, char **av) {
 
   size_t total_begin = time(NULL);
 
-  StrobemerIndex *index_reference = nullptr;
+//  StrobemerIndex *index_reference = nullptr;
   IndexParameters *index_parameters_reference = nullptr;
   MappingParameters map_params;
   CommandLineOptions opt;
@@ -2289,106 +2252,34 @@ int main(int ac, char **av) {
   if (g_stype == SeedType::Strobemer){
     opt = parse_command_line_arguments(ac, av);
 
-    cerr << "Starting Accel-Align Setup (strobmer seed)" << std::endl;
-
-    // Load accalign Reference data structure without acalign index
-    if(opt.ref_filename.empty()) {
-      cerr << "Please provide a valid reference file" << std::endl;
-      return 1;
-    }
-
-    if (opt.c >= 64 || opt.c <= 0) {
-      throw BadParameter("c must be greater than 0 and less than 64");
-    }
-
-    InputBuffer input_buffer = get_input_buffer(opt);
-    if (!opt.r_set && !opt.reads_filename1.empty()) {
-      opt.r = estimate_read_length(input_buffer);
-      cerr << "Estimated read length: " << opt.r << " bp\n";
-    }
-    input_buffer.rewind_reset();
     IndexParameters index_parameters = IndexParameters::from_read_length(
-        opt.r,
-        opt.k_set ? opt.k : IndexParameters::DEFAULT,
-        opt.s_set ? opt.s : IndexParameters::DEFAULT,
-        opt.l_set ? opt.l : IndexParameters::DEFAULT,
-        opt.u_set ? opt.u : IndexParameters::DEFAULT,
-        opt.c_set ? opt.c : IndexParameters::DEFAULT,
-        opt.max_seed_len_set ? opt.max_seed_len : IndexParameters::DEFAULT
+        opt.r, IndexParameters::DEFAULT, IndexParameters::DEFAULT, IndexParameters::DEFAULT,
+        IndexParameters::DEFAULT, IndexParameters::DEFAULT, IndexParameters::DEFAULT
     );
     index_parameters_reference = &index_parameters;
-    AlignmentParameters aln_params;
-    aln_params.match = opt.A;
-    aln_params.mismatch = opt.B;
-    aln_params.gap_open = opt.O;
-    aln_params.gap_extend = opt.E;
-    aln_params.end_bonus = opt.end_bonus;
+  }
 
-    MappingParameters map_param;
-    map_param.r = opt.r;
-    map_param.max_secondary = opt.max_secondary;
-    map_param.dropoff_threshold = opt.dropoff_threshold;
-    map_param.rescue_level = opt.rescue_level;
-    map_param.max_tries = opt.max_tries;
-    map_param.is_sam_out = opt.is_sam_out;
-    map_param.cigar_ops = opt.cigar_eqx ? CigarOps::EQX : CigarOps::M;
-    map_param.output_unmapped = opt.output_unmapped;
-    map_param.details = opt.details;
-    map_param.verify();
-
-    log_parameters(index_parameters, map_params, aln_params);
-    cerr << "Threads: " << opt.n_threads << std::endl;
-
-    // Retrieve Strobealign index
-    References references;
-    references = References::from_fasta(opt.ref_filename);
-    if (enable_bs){
-      r[0] = new Reference(opt.ref_filename.c_str(), kmer_len, g_stype, index_type, 'c');
-      r[1] = new Reference(opt.ref_filename.c_str(), kmer_len, g_stype, index_type, 'g');
-    } else {
-      r[0] = new Reference(opt.ref_filename.c_str(), kmer_len, g_stype, index_type, ' ');
-    }
-    cerr << "Reference size: " << references.total_length() / 1E6 << " Mbp ("
-                  << references.size() << " contig" << (references.size() == 1 ? "" : "s")
-                  << "; largest: "
-                  << (*std::max_element(references.lengths.begin(), references.lengths.end()) / 1E6) << " Mbp)\n";
-    if (references.total_length() == 0) {
-      throw InvalidFasta("No reference sequences found");
-    }
-    index_reference = new StrobemerIndex(references, index_parameters);     // Read Strobealign index from the provided file
-
-    std::string sti_path = opt.ref_filename + index_parameters.filename_extension();
-    cerr << "Reading index from " << sti_path << '\n';
-    index_reference->read(sti_path);
+  if (enable_bs){
+    r[0] = new Reference(av[opn], kmer_len, g_stype, index_type, 'c', index_parameters_reference);
+    r[1] = new Reference(av[opn++], kmer_len, g_stype, index_type, 'g', index_parameters_reference);
   } else {
-    if (enable_bs){
-      r[0] = new Reference(av[opn], kmer_len, g_stype, index_type, 'c');
-      r[1] = new Reference(av[opn++], kmer_len, g_stype, index_type, 'g');
-    } else {
-      r[0] = new Reference(av[opn++], kmer_len, g_stype, index_type, ' ');
-    }
+    r[0] = new Reference(av[opn++], kmer_len, g_stype, index_type, ' ', index_parameters_reference);
   }
 
   auto start = std::chrono::system_clock::now();
 
-  AccAlign f(r, index_reference, index_parameters_reference, map_params);
+  AccAlign f(r, index_parameters_reference, map_params);
   f.open_output(g_out);
 
-  if (g_stype == SeedType::Strobemer){
-    if (opt.is_SE)
-      f.tbb_fastq(opt.reads_filename1.c_str(), "\0");
-    else
-      f.tbb_fastq(opt.reads_filename1.c_str(), opt.reads_filename2.c_str());
+  if (opn == ac - 1) {
+    f.tbb_fastq(av[opn], "\0");
+  } else if (opn == ac - 2) {
+    f.tbb_fastq(av[opn], av[opn + 1]);
   } else {
-    if (opn == ac - 1) {
-      f.tbb_fastq(av[opn], "\0");
-    } else if (opn == ac - 2) {
-      f.tbb_fastq(av[opn], av[opn + 1]);
-    } else {
-      print_usage();
-      return 0;
-    }
+    print_usage();
+    return 0;
   }
+
 
   auto end = std::chrono::system_clock::now();
   auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);

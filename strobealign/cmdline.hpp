@@ -2,6 +2,7 @@
 #include <string>
 #include <utility>
 #include "ext/args.hxx"
+#include "readlen.hpp"
 
 
 struct CommandLineOptions {
@@ -73,5 +74,6 @@ struct CommandLineOptions {
 
 };
 
+InputBuffer get_input_buffer(const CommandLineOptions& opt);
 CommandLineOptions parse_command_line_arguments(int argc, char **argv);
 CommandLineOptions do_strobealign_setup(args::ArgumentParser parser, int i, char **pString);
