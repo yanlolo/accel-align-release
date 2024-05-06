@@ -480,7 +480,10 @@ Reference::Reference(const char *F, unsigned _kmer_len, SeedType _g_stype, Index
     index_type(_index_type),
     mode(_mode),
     index_parameters_reference(_index_parameters_reference) {
+
   auto start = std::chrono::system_clock::now();
+
+  load_reference(F);
 
   if (g_stype == SeedType::Minimizer){
     int n_threads = 3;
@@ -493,7 +496,6 @@ Reference::Reference(const char *F, unsigned _kmer_len, SeedType _g_stype, Index
     mm_idx_reader_t *idx_rdr = mm_idx_reader_open(fnw, &ipt, nullptr);
     mi = mm_idx_reader_read(idx_rdr, n_threads, true);
 
-    load_reference(F);
   } else if (g_stype == SeedType::Strobemer){
     // Retrieve Strobealign index
     References references;
@@ -502,8 +504,6 @@ Reference::Reference(const char *F, unsigned _kmer_len, SeedType _g_stype, Index
     std::string sti_path = F + index_parameters_reference->filename_extension();
     cerr << "Reading index from " << sti_path << '\n';
     strobe_index->read(sti_path);
-
-    load_reference(F);
   } else{
     string F_index;
     ////// case HASH //////
@@ -547,7 +547,6 @@ Reference::Reference(const char *F, unsigned _kmer_len, SeedType _g_stype, Index
       }
     }
     thread t([this, F_index]() {load_index(F_index.c_str());});
-    load_reference(F);
 
     t.join(); // wait for index load to finish
   }
