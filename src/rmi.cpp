@@ -74,7 +74,7 @@ RMI::~RMI() {
 }
 
 // lookup
-uint64_t RMI::lookup(uint64_t key, size_t* err) {
+uint64_t RMI::lookup(uint64_t key, size_t* err) const{
     assert(is_init);
     return rmi_lookup(key, err);
 }

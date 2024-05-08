@@ -106,7 +106,7 @@ code_dir=/home/yiqing/code/accel-align-release
 in_dir=/home/yiqing/yan/input/simulate/10m-pe-1/
 out_dir=/home/yiqing/yan/output
 ref=/home/yiqing/data/fsva-hg37/hg37.fna
-nthreads=4
+nthreads=12
 
 ## PE
 in_dir=/home/yiqing/yan/input/simulate/10m-pe-1/
@@ -116,7 +116,6 @@ $in_dir/sv-10m-100-r1.fastq $in_dir/sv-10m-100-r2.fastq
 ## accuracy check
 python $code_dir/utilities/match.py $in_dir/sv-10m-100-pe-align.sam $out_dir/rmi.sam $out_dir/rmi.csv  
 
-## SE
 
 ```
 
@@ -135,11 +134,13 @@ bash $code_dir/rmi.sh -l 32 $ref
 
 ## Note1: manuelly change rmi.sh line 103 to run ""${BASE_DIR}/accindex" --strobe-mode --create-index $ref_name -r 100" 
 ## Note 2: '-l 32' is to generate output as the following scheme 
-## Output: 
+## Output  --> keyv, posv, learnt index
 #### /home/yiqing/data/fsva-hg37/hg37_index32
 #### /home/yiqing/data/fsva-hg37/hg37_index32/keys_uint64: (data.key, i) --> i is accumulated because it's the the number of seeds lower than this value
 #### /home/yiqing/data/fsva-hg37/hg37_index32/pos_uint32: (data.pos)
 #### /home/yiqing/data/fsva-hg37/hg37_index32/rmi_data/rmi_L1_PARAMETERS: learned statistic
+## Output  --> strobemer
+#### /home/yiqing/data/fsva-hg37/hg37.fna.r100.sti
 
 
 ```

@@ -18,9 +18,13 @@
 #include "timer.hpp"
 #include "logger.hpp"
 #include <sstream>
+#include <fcntl.h>
+#include <dlfcn.h> // for Linux
+#include <sys/mman.h>
 
 static Logger& logger = Logger::get();
 static const uint32_t STI_FILE_FORMAT_VERSION = 2;
+using namespace std;
 
 void StrobemerIndex::write(const std::string& filename) const {
   std::ofstream ofs(filename, std::ios::binary);
@@ -38,6 +42,103 @@ void StrobemerIndex::write(const std::string& filename) const {
 
   write_vector(ofs, randstrobes);
   write_vector(ofs, randstrobe_start_indices);
+}
+
+void StrobemerIndex::read_rmi(const std::string& F) {
+  //TODO:
+//  read_vector(ifs, randstrobes);
+
+  string keys_f = string(F) + "/keys_uint64";
+  string pos_f = string(F) + "/pos_uint32";
+
+  ifstream fi;
+  fi.open(keys_f.c_str(), ios::binary);
+  if (!fi) {
+    cerr << "Unable to open key file" << endl;
+    exit(0);
+  }
+  fi.read((char *) &nkeyv_true, 8);
+  nkeyv = (nkeyv_true+1) * 3;
+  fi.close();
+
+  fi.open(pos_f.c_str(), ios::binary);
+  if (!fi) {
+    cerr << "Unable to open pos file" << endl;
+    exit(0);
+  }
+//  fi.read((char *) &filter_cutoff, sizeof(int));
+//  fi.read((char *) &bits, sizeof(int));
+  fi.read((char *) &nposv, 8);
+  fi.close();
+
+  cerr << "Mapping keyv of size: " << nkeyv * 4 <<
+       " and posv of size " << nposv * sizeof(uint64_t) << endl;
+  size_t posv_sz = (size_t) nposv * sizeof(uint32_t);
+  size_t keyv_sz = (size_t) nkeyv * sizeof(uint64_t);
+
+#if __linux__
+  #include <linux/version.h>
+#if LINUX_VERSION_CODE > KERNEL_VERSION(2,6,22)
+#define _MAP_POPULATE_AVAILABLE
+#endif
+#endif
+
+#ifdef _MAP_POPULATE_AVAILABLE
+#define MMAP_FLAGS (MAP_PRIVATE | MAP_POPULATE)
+#else
+#define MMAP_FLAGS MAP_PRIVATE
+#endif
+
+  int fd = open(keys_f.c_str(), O_RDONLY);
+  char *base = reinterpret_cast<char *>(mmap(NULL, 8 + keyv_sz, PROT_READ, MMAP_FLAGS, fd, 0));
+  assert(base != MAP_FAILED);
+  keyv = (uint64_t * )(base + 8);
+
+  // cerr << "Printing first 4 entries" << endl;
+  // cerr << "------ keyv ------" << endl;
+  // cerr << *((uint64_t*)(keyv+0)) << " [" << keyv[2] << " pos]" << endl;
+  // cerr << *((uint64_t*)(keyv+3)) << " [" << keyv[5] << " pos]" << endl;
+  // cerr << *((uint64_t*)(keyv+6)) << " [" << keyv[8] << " pos]" << endl;
+  // cerr << *((uint64_t*)(keyv+9)) << " [" << keyv[11] << " pos]" << endl;
+
+  fd = open(pos_f.c_str(), O_RDONLY);
+  base = reinterpret_cast<char *>(mmap(NULL, 8 + posv_sz, PROT_READ, MMAP_FLAGS, fd, 0));
+  assert(base != MAP_FAILED);
+  posv = (uint32_t * )(base + 8);
+
+  // print first 4 entries
+  // cerr << "------ posv ------" << endl;
+  // cerr << posv[0] << endl;
+  // cerr << posv[1] << endl;
+  // cerr << posv[2] << endl;
+  // cerr << posv[3] << endl;
+  // cerr << "------------------" << endl;
+
+  cerr << "Mapping done" << endl;
+  cerr << "done loading hashtable\n";
+
+  // print first 4 entries
+  // cerr << "------ posv ------" << endl;
+  // cerr << posv[0] << endl;
+  // cerr << posv[1] << endl;
+  // cerr << posv[2] << endl;
+  // cerr << posv[3] << endl;
+  // cerr << "------------------" << endl;
+
+//  randstrobes.resize(nposv);
+//  size_t i = 0;
+//  for(size_t idx = 0; idx < nkeyv_true; ++idx){
+//    uint64_t cur_key = keyv[idx*3+2];
+//    uint32_t cur_acc_pos = keyv[idx*3+2+2];
+//    uint32_t next_acc_pos = keyv[idx*3+2+2+3];
+//    for (int j = cur_acc_pos; j < next_acc_pos; ++j) {
+//      uint32_t pos = posv[j];
+//      randstrobes.push_back(RefRandstrobe(cur_key, pos, 0));
+//    }
+//  }
+
+  cerr << "Mapping done" << endl;
+  cerr << "done loading hashtable\n";
 }
 
 void StrobemerIndex::read(const std::string& filename) {

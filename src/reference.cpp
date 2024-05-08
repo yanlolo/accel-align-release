@@ -133,9 +133,9 @@ void Reference::load_index64(const char *F) {
   fi.close();
 
   cerr << "Mapping keyv of size: " << nkeyv * 4 <<
-       " and posv of size " << nposv * 4 << endl;
+       " and posv of size " << nposv * sizeof(uint64_t) << endl;
   size_t posv_sz = (size_t) nposv * sizeof(uint32_t);
-  size_t keyv_sz = (size_t) nkeyv * sizeof(uint32_t);
+  size_t keyv_sz = (size_t) nkeyv * sizeof(uint64_t);
 
 #if __linux__
   #include <linux/version.h>
@@ -153,7 +153,8 @@ void Reference::load_index64(const char *F) {
   int fd = open(keys_f.c_str(), O_RDONLY);
   char *base = reinterpret_cast<char *>(mmap(NULL, 8 + keyv_sz, PROT_READ, MMAP_FLAGS, fd, 0));
   assert(base != MAP_FAILED);
-  keyv = (uint32_t * )(base + 8);
+//  keyv = (uint64_t * )(base + 8);
+  keyv = (uint32_t * )(base + 8);  // TODO: double  check !!!!!
 
   // cerr << "Printing first 4 entries" << endl;
   // cerr << "------ keyv ------" << endl;
@@ -497,13 +498,37 @@ Reference::Reference(const char *F, unsigned _kmer_len, SeedType _g_stype, Index
     mi = mm_idx_reader_read(idx_rdr, n_threads, true);
 
   } else if (g_stype == SeedType::Strobemer){
-    // Retrieve Strobealign index
-    References references;
-    references = References::from_fasta(F);
-    strobe_index = new StrobemerIndex(references, *index_parameters_reference);
-    std::string sti_path = F + index_parameters_reference->filename_extension();
-    cerr << "Reading index from " << sti_path << '\n';
-    strobe_index->read(sti_path);
+    if (index_type == IndexType::RMI_IDX) {
+      load_index = std::bind(&Reference::load_index64, this, std::placeholders::_1);
+
+      // F          ./data/hg37.fna
+      // F_prefix   ./data/hg37
+      // F_index    ./data/hg37_index32
+      // F_library  ./data/hg37_index32/hg37_index
+      string F_prefix = string(F).substr(0, string(F).find_last_of("."));
+      string F_index = F_prefix  + "_index" + to_string(kmer_len);
+      string F_library = F_index + "/" + get_last_directory(F_index);
+
+      References references;
+      references = References::from_fasta(F);
+      strobe_index = new StrobemerIndex(references, *index_parameters_reference);
+      std::string sti_path = F + index_parameters_reference->filename_extension();
+      cerr << "Reading index from " << sti_path << '\n';
+      strobe_index->rmi.init(F_library.c_str());
+      strobe_index->read_rmi(sti_path);
+      strobe_index->read(sti_path);
+
+      thread t([this, F_index]() {load_index(F_index.c_str());});
+
+    } else {
+      // Retrieve Strobealign index
+      References references;
+      references = References::from_fasta(F);
+      strobe_index = new StrobemerIndex(references, *index_parameters_reference);
+      std::string sti_path = F + index_parameters_reference->filename_extension();
+      cerr << "Reading index from " << sti_path << '\n';
+      strobe_index->read(sti_path);
+    }
   } else{
     string F_index;
     ////// case HASH //////

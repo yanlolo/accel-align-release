@@ -249,9 +249,10 @@ void AccAlign::find_candidate_positions_using_strobealign(char *seq, vector<Regi
   auto query_randstrobes = randstrobes_query(string(seq), *index_parameters_reference);
   auto [nonrepetitive_fraction, nams] = find_nams(query_randstrobes, *get_strobe_index(ref_id));
 
-  if (nams.empty() || nonrepetitive_fraction < 0.7) {
-    nams = find_nams_rescue(query_randstrobes, *get_strobe_index(ref_id), map_params.rescue_cutoff);
-  }
+  // TODO: refine this one
+//  if (nams.empty() || nonrepetitive_fraction < 0.7) {
+//    nams = find_nams_rescue(query_randstrobes, *get_strobe_index(ref_id), map_params.rescue_cutoff);
+//  }
 
 //  std::sort(nams.begin(), nams.end(), [](const Nam &a, const Nam &b) -> bool {
 //    return a.as > b.as;

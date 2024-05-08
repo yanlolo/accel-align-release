@@ -20,7 +20,7 @@ class RMI {
     RMI();
     ~RMI();
     void init(const char *library_prefix);
-    uint64_t lookup(uint64_t key, size_t* err);
+    uint64_t lookup(uint64_t key, size_t* err) const;
 };
 
 #endif

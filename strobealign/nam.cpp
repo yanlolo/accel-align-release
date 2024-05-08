@@ -165,8 +165,12 @@ std::pair<float, std::vector<Nam>> find_nams(
     hits_per_ref[1].reserve(100);
     int nr_good_hits = 0, total_hits = 0;
     for (const auto &q : query_randstrobes) {
-        size_t position = index.find(q.hash);
-        if (position != index.end()){
+      size_t position = index.find(q.hash);
+      size_t position_rmi = index.find_rmi(q.hash);
+
+      assert(position == position_rmi);
+
+      if (position != index.end()){
             total_hits++;
             if (index.is_filtered(position)) {
                 continue;

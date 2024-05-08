@@ -17,6 +17,7 @@
 #include "refs.hpp"
 #include "randstrobes.hpp"
 #include "indexparameters.hpp"
+#include "../include/rmi.h"
 
 
 struct IndexCreationStatistics {
@@ -51,6 +52,7 @@ struct StrobemerIndex {
 
   void write(const std::string& filename) const;
   void read(const std::string& filename);
+  void read_rmi(const std::string& filename);
   void populate(float f, size_t n_threads);
   void print_diagnostics(const std::string& logfile_name, int k) const;
   int pick_bits(size_t size) const;
@@ -77,6 +79,37 @@ struct StrobemerIndex {
                                 RefRandstrobe{key, 0, 0},
                                 cmp);
     if (pos->hash == key) return pos - randstrobes.begin();
+    return end();
+  }
+
+  size_t find_rmi(randstrobe_hash_t key) const {
+    size_t err;
+    uint64_t *guess_key;
+    uint64_t guess_pos, l, r;
+    // call the lookup function of the index
+    guess_pos = rmi.lookup(key, &err);
+
+    // set up l and r for the bounded binary search
+    l = guess_pos < err ? 0 : (guess_pos - err);
+    r = (guess_pos + err) < (nkeyv_true - 1) ? (guess_pos + err) : (nkeyv_true - 1);
+
+    // check in the keyv array
+    while (l <= r) {
+      guess_key = reinterpret_cast<uint64_t *>(keyv + (guess_pos * 3));
+      // if it's the same, done
+      if (*guess_key == key) {
+        return guess_pos;  // TODO: double check
+      }
+      // else, do binary search
+      if (*guess_key < key) {
+        l = guess_pos + 1;
+      } else {
+        r = guess_pos - 1;
+      }
+      // update guess_pos
+      guess_pos = l + (r - l) / 2;
+    }
+
     return end();
   }
 
@@ -168,9 +201,14 @@ struct StrobemerIndex {
    * is always randstrobes.size().
    */
 
+  RMI rmi;
   std::vector<RefRandstrobe> randstrobes;
   std::vector<bucket_index_t> randstrobe_start_indices;
   int bits; // no. of bits of the hash to use when indexing a randstrobe bucket
+
+  uint32_t *posv;
+  uint64_t *keyv; //TODO: check keyv should be uint64_t?
+  uint64_t nposv, nkeyv, nkeyv_true;
 };
 
 #endif

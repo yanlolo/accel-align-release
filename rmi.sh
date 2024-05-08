@@ -108,7 +108,8 @@ else
   case "$choice" in 
     y|Y )
       _redo_=1 
-      "${BASE_DIR}/key_gen" -l $kmer_len $ref_name 
+      "${BASE_DIR}/key_gen" -l $kmer_len $ref_name
+      #  "${BASE_DIR}/accindex" --strobe-mode --create-index $ref_name -r 100
       ;;
     * ) 
       echo -e "\033[1;33m [rmi.sh] \033[0mcommand not executed" ;;
