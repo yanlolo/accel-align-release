@@ -92,6 +92,12 @@ python $code_dir/utilities/match.py $in_dir/sv-1m-${rlen}-pe-align.sam $out_dir/
 code_dir=/home/yiqing/code/accel-align-release
 ref=/home/yiqing/data/fsva-hg37/hg37.fna
 bash $code_dir/rmi.sh -l 32 $ref
+## output: 
+#### /home/yiqing/data/fsva-hg37/hg37_index32
+#### /home/yiqing/data/fsva-hg37/hg37_index32/keys_uint64: (data.key, i) --> i is accumulated because it's the the number of seeds lower than this value
+#### /home/yiqing/data/fsva-hg37/hg37_index32/pos_uint32: (data.pos)
+#### /home/yiqing/data/fsva-hg37/hg37_index32/rmi_data/rmi_L1_PARAMETERS: learned statistic
+
 ## Note1: [rmi.sh] key_gen output already exists. Do you want to execute the command anyway? [y/N] --> y
 ## Note2: [rmi.sh] which index would you like to train? [1-10] 1
 
@@ -117,6 +123,7 @@ python $code_dir/utilities/match.py $in_dir/sv-10m-100-pe-align.sam $out_dir/rmi
 #### 2.1.1 RMI-strobe
 
 ```
+## Index
 code_dir=/home/yiqing/code/accel-align-release
 ref=/home/yiqing/data/fsva-hg37/hg37.fna
 in_dir=/home/yiqing/yan/input/simulate/1m/
@@ -124,12 +131,16 @@ out_dir=/home/yiqing/yan/output/
 nthreads=12
 rlen=100
 
-## index
-$code_dir/accindex --strobe-mode --create-index $ref -r $rlen
+bash $code_dir/rmi.sh -l 32 $ref
 
-code_dir=/home/yiqing/code/accel-align-release
-ref=/home/yiqing/data/fsva-hg37/hg37.fna
-bash $code_dir/rmi.sh -l 64 $ref
+## Note1: manuelly change rmi.sh line 103 to run ""${BASE_DIR}/accindex" --strobe-mode --create-index $ref_name -r 100" 
+## Note 2: '-l 32' is to generate output as the following scheme 
+## Output: 
+#### /home/yiqing/data/fsva-hg37/hg37_index32
+#### /home/yiqing/data/fsva-hg37/hg37_index32/keys_uint64: (data.key, i) --> i is accumulated because it's the the number of seeds lower than this value
+#### /home/yiqing/data/fsva-hg37/hg37_index32/pos_uint32: (data.pos)
+#### /home/yiqing/data/fsva-hg37/hg37_index32/rmi_data/rmi_L1_PARAMETERS: learned statistic
+
 
 ```
 

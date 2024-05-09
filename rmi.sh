@@ -65,6 +65,7 @@ base_name=$(basename $ref_name .fna)        # hg37
 
 # Make output directory
 OUTPUT_DIR="${dir_name}/${base_name}_index${kmer_len}"   # ./data/hg37_index32
+mkdir -p $OUTPUT_DIR
 OUTPUT_DIR=$(realpath -se $OUTPUT_DIR)
 
 echo -e "\n\033[1;96m [rmi.sh] \033[0mBuilding index on file $base_name.fna"
@@ -94,14 +95,13 @@ echo -e "            --- generating files 'keys_uint${bit_len}' and 'pos_uint32'
 echo -e "\n\033[1;96m [rmi.sh] \033[0mCompiling the key_gen program..."
 make key_gen
 
-mkdir -p $OUTPUT_DIR
 cd $OUTPUT_DIR                             # ----> NOW WE ARE IN hg37_index/keys_unit32
 
 echo -e "\n\033[1;96m [rmi.sh] \033[0mRunning key_gen..."
 if [ ! -e $keys_name ] || [ ! -e $pos_name ]; then
   # The file does not exist, so execute the command
-#  "${BASE_DIR}/key_gen" -l $kmer_len $ref_name
-  "${BASE_DIR}/accindex" --strobe-mode --create-index $ref_name -r 100
+  "${BASE_DIR}/key_gen" -l $kmer_len $ref_name
+#  "${BASE_DIR}/accindex" --strobe-mode --create-index $ref_name -r 100
 else
   # The file exists, so ask the user before executing
   read -ep $'\033[1;33m [rmi.sh] \033[0mkey_gen output already exists. Do you want to execute the command anyway? [y/N] ' choice
