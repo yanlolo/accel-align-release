@@ -82,7 +82,8 @@ struct StrobemerIndex {
     return end();
   }
 
-  size_t find_rmi(randstrobe_hash_t key) const {
+  // return the (acc_pos, pos in keyv)
+  std::pair<size_t, size_t>  find_rmi(randstrobe_hash_t key) const {
     size_t err;
     uint64_t *guess_key;
     uint64_t guess_pos, l, r;
@@ -98,7 +99,7 @@ struct StrobemerIndex {
       guess_key = reinterpret_cast<uint64_t *>(keyv + (guess_pos * 3));
       // if it's the same, done
       if (*guess_key == key) {
-        return guess_pos;  // TODO: double check
+        return std::make_pair(keyv[guess_pos * 3+2], guess_pos);  // return the accumulated position
       }
       // else, do binary search
       if (*guess_key < key) {
@@ -110,7 +111,7 @@ struct StrobemerIndex {
       guess_pos = l + (r - l) / 2;
     }
 
-    return end();
+    return std::make_pair(end(), end());
   }
 
   randstrobe_hash_t get_hash(bucket_index_t position) const {
@@ -135,6 +136,11 @@ struct StrobemerIndex {
 
   int reference_index(bucket_index_t position) const {
     return randstrobes[position].reference_index();
+  }
+
+  unsigned int get_count_rmi(bucket_index_t position) const {
+    int cnt = keyv[(position + 1 )* 3 + 2] - keyv[position * 3 + 2];
+    return cnt;
   }
 
   unsigned int get_count(bucket_index_t position) const {
@@ -206,8 +212,7 @@ struct StrobemerIndex {
   std::vector<bucket_index_t> randstrobe_start_indices;
   int bits; // no. of bits of the hash to use when indexing a randstrobe bucket
 
-  uint32_t *posv;
-  uint64_t *keyv; //TODO: check keyv should be uint64_t?
+  uint32_t *posv, *keyv; //TODO: check keyv should be uint64_t?
   uint64_t nposv, nkeyv, nkeyv_true;
 };
 

@@ -92,7 +92,7 @@ void StrobemerIndex::read_rmi(const std::string& F) {
   int fd = open(keys_f.c_str(), O_RDONLY);
   char *base = reinterpret_cast<char *>(mmap(NULL, 8 + keyv_sz, PROT_READ, MMAP_FLAGS, fd, 0));
   assert(base != MAP_FAILED);
-  keyv = (uint64_t * )(base + 8);
+  keyv = (uint32_t * )(base + 8);
 
   // cerr << "Printing first 4 entries" << endl;
   // cerr << "------ keyv ------" << endl;

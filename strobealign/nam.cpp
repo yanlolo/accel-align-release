@@ -165,10 +165,10 @@ std::pair<float, std::vector<Nam>> find_nams(
     hits_per_ref[1].reserve(100);
     int nr_good_hits = 0, total_hits = 0;
     for (const auto &q : query_randstrobes) {
-      size_t position = index.find(q.hash);
-      size_t position_rmi = index.find_rmi(q.hash);
-
-      assert(position == position_rmi);
+      std::pair<size_t, size_t> position_rmi = index.find_rmi(q.hash);
+      size_t position = position_rmi.first;
+//      size_t position = index.find(q.hash);
+//      assert(position == position_rmi.first);
 
       if (position != index.end()){
             total_hits++;
@@ -215,10 +215,16 @@ std::vector<Nam> find_nams_rescue(
     hits_rc.reserve(5000);
 
     for (auto &qr : query_randstrobes) {
-        size_t position = index.find(qr.hash);
+      std::pair<size_t, size_t> position_rmi = index.find_rmi(qr.hash);
+      size_t position = position_rmi.first;
+//      size_t position = index.find(qr.hash);
+//      assert(position == position_rmi.first);
+
         if (position != index.end()) {
-            unsigned int count = index.get_count(position);
-            RescueHit rh{position, count, qr.start, qr.end};
+          unsigned int count = index.get_count_rmi(position_rmi.second);
+//            unsigned int count = index.get_count(position);
+//          assert(count == count_rmi);
+          RescueHit rh{position, count, qr.start, qr.end};
             if (qr.is_reverse){
                 hits_rc.push_back(rh);
             } else {

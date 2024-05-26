@@ -143,6 +143,23 @@ bash $code_dir/rmi.sh -l 32 $ref
 #### /home/yiqing/data/fsva-hg37/hg37.fna.r100.sti
 
 
+## Align
+## change accalign.cpp:2142 ->  IndexType index_type = IndexType::RMI_IDX; 
+
+code_dir=/home/yiqing/code/accel-align-release
+in_dir=/home/yiqing/yan/input/simulate/10m-pe-1/
+out_dir=/home/yiqing/yan/output
+ref=/home/yiqing/data/fsva-hg37/hg37.fna
+nthreads=12
+
+## PE
+in_dir=/home/yiqing/yan/input/simulate/10m-pe-1/
+time $code_dir/accalign --strobe-mode -t $nthreads -o $out_dir/rmi.sam $ref \
+$in_dir/sv-10m-100-r1.fastq $in_dir/sv-10m-100-r2.fastq
+
+## accuracy check
+python $code_dir/utilities/match.py $in_dir/sv-10m-100-pe-align.sam $out_dir/rmi.sam $out_dir/rmi.csv  
+
 ```
 
 #### 2.2 Binary
@@ -160,7 +177,7 @@ out_dir=/home/yiqing/yan/output
 ref=/home/yiqing/data/fsva-hg37/hg37.fna
 nthreads=4
 
-$code_dir/accalign -l 32 -B -t $nthreads -o $out_dir/binary.sam $ref \
+time $code_dir/accalign -l 32 -B -t $nthreads -o $out_dir/binary.sam $ref \
 $in_dir/sv-10m-100-r1.fastq $in_dir/sv-10m-100-r2.fastq
 
 ## accuracy check

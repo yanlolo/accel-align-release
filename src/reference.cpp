@@ -499,7 +499,7 @@ Reference::Reference(const char *F, unsigned _kmer_len, SeedType _g_stype, Index
 
   } else if (g_stype == SeedType::Strobemer){
     if (index_type == IndexType::RMI_IDX) {
-      load_index = std::bind(&Reference::load_index64, this, std::placeholders::_1);
+//      load_index = std::bind(&Reference::load_index64, this, std::placeholders::_1);
 
       // F          ./data/hg37.fna
       // F_prefix   ./data/hg37
@@ -515,10 +515,10 @@ Reference::Reference(const char *F, unsigned _kmer_len, SeedType _g_stype, Index
       std::string sti_path = F + index_parameters_reference->filename_extension();
       cerr << "Reading index from " << sti_path << '\n';
       strobe_index->rmi.init(F_library.c_str());
-      strobe_index->read_rmi(sti_path);
+      strobe_index->read_rmi(F_index);
       strobe_index->read(sti_path);
 
-      thread t([this, F_index]() {load_index(F_index.c_str());});
+//      thread t([this, F_index]() {load_index(F_index.c_str());});
 
     } else {
       // Retrieve Strobealign index
