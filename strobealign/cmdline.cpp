@@ -52,6 +52,7 @@ CommandLineOptions do_strobealign_setup(args::ArgumentParser parser, int argc, c
   args::ValueFlag<int> N(parser, "INT", "Retain at most INT secondary alignments (is upper bounded by -M and depends on -S) [0]", {'N'});
   args::ValueFlag<std::string> index_statistics(parser, "PATH", "Print statistics of indexing to PATH", {"index-statistics"});
   args::Flag i(parser, "index", "Do not map reads; only generate the strobemer index and write it to disk. If read files are provided, they are used to estimate read length", {"create-index", 'i'});
+  args::ValueFlag<char> I(parser, "index type", " (B, H, R) binary, hash, rmi", {"index lookup type", 'I'});
   args::Flag use_index(parser, "use_index", "Use a pre-generated index previously written with --create-index.", { "use-index" });
   args::Flag use_strobealign(parser, "use_strobealign", "Use Strobealign mode", { "strobe-mode" });
 

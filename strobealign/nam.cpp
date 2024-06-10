@@ -158,16 +158,21 @@ std::vector<Nam> merge_hits_into_nams_forward_and_reverse(
  */
 std::pair<float, std::vector<Nam>> find_nams(
     const QueryRandstrobeVector &query_randstrobes,
-    const StrobemerIndex& index
+    const StrobemerIndex& index,
+    bool is_rmi
 ) {
     std::array<robin_hood::unordered_map<unsigned int, std::vector<Hit>>, 2> hits_per_ref;
     hits_per_ref[0].reserve(100);
     hits_per_ref[1].reserve(100);
     int nr_good_hits = 0, total_hits = 0;
     for (const auto &q : query_randstrobes) {
-      std::pair<size_t, size_t> position_rmi = index.find_rmi(q.hash);
-      size_t position = position_rmi.first;
-//      size_t position = index.find(q.hash);
+      size_t position;
+      if (is_rmi){
+        std::pair<size_t, size_t> position_rmi = index.find_rmi(q.hash);
+        position = position_rmi.first;
+      } else {
+        position = index.find(q.hash);
+      }
 //      assert(position == position_rmi.first);
 
       if (position != index.end()){
@@ -192,7 +197,8 @@ std::pair<float, std::vector<Nam>> find_nams(
 std::vector<Nam> find_nams_rescue(
     const QueryRandstrobeVector &query_randstrobes,
     const StrobemerIndex& index,
-    unsigned int rescue_cutoff
+    unsigned int rescue_cutoff,
+    bool is_rmi
 ) {
     struct RescueHit {
         size_t position;
@@ -215,15 +221,24 @@ std::vector<Nam> find_nams_rescue(
     hits_rc.reserve(5000);
 
     for (auto &qr : query_randstrobes) {
-      std::pair<size_t, size_t> position_rmi = index.find_rmi(qr.hash);
-      size_t position = position_rmi.first;
-//      size_t position = index.find(qr.hash);
+      size_t position, non_acc_pos;
+      unsigned int count;
+      if (is_rmi){
+        std::pair<size_t, size_t> position_rmi = index.find_rmi(qr.hash);
+        position = position_rmi.first;
+        non_acc_pos = position_rmi.second;
+      } else {
+        position = index.find(qr.hash);
+      }
 //      assert(position == position_rmi.first);
 
         if (position != index.end()) {
-          unsigned int count = index.get_count_rmi(position_rmi.second);
-//            unsigned int count = index.get_count(position);
+          if (is_rmi)
+            count = index.get_count_rmi(non_acc_pos);
+          else
+            count = index.get_count(position);
 //          assert(count == count_rmi);
+
           RescueHit rh{position, count, qr.start, qr.end};
             if (qr.is_reverse){
                 hits_rc.push_back(rh);

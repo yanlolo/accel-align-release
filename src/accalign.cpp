@@ -27,6 +27,7 @@ string g_out, g_batch_file, g_embed_file;
 char rcsymbol[6] = "TGCAN";
 uint8_t code[256];
 bool enable_extension = true, enable_wfa_extension = false, extend_all = false, enable_bs = false;
+IndexType index_type = IndexType::HASH_IDX; //default is hash index
 
 int min_match = 21; //at leach min_match chars are matched, otherwise will regard as unalign
 int g_ncpus = 1;
@@ -247,10 +248,10 @@ void AccAlign::pghole_wrapper(Read &R,
 // @param direction: "false", if forward strang, "true" if reverse strang
 void AccAlign::find_candidate_positions_using_strobealign(char *seq, vector<Region> &candidate_regions, bool direction, int ref_id){
   auto query_randstrobes = randstrobes_query(string(seq), *index_parameters_reference);
-  auto [nonrepetitive_fraction, nams] = find_nams(query_randstrobes, *get_strobe_index(ref_id));
+  auto [nonrepetitive_fraction, nams] = find_nams(query_randstrobes, *get_strobe_index(ref_id), index_type == IndexType::RMI_IDX);
 
   if (nams.empty() || nonrepetitive_fraction < 0.7) {
-    nams = find_nams_rescue(query_randstrobes, *get_strobe_index(ref_id), map_params.rescue_cutoff);
+    nams = find_nams_rescue(query_randstrobes, *get_strobe_index(ref_id), map_params.rescue_cutoff, index_type == IndexType::RMI_IDX);
   }
 
 //  std::sort(nams.begin(), nams.end(), [](const Nam &a, const Nam &b) -> bool {
@@ -2143,7 +2144,6 @@ int main(int ac, char **av) {
 
   int opn = 1;
   int kmer_temp = 0;
-  IndexType index_type = IndexType::HASH_IDX; //default is hash index
 
  if (std::string(av[opn]) == "--strobe-mode") {
      g_stype = SeedType::Strobemer;
@@ -2181,24 +2181,24 @@ int main(int ac, char **av) {
         enable_extension = false;
         opn += 1;
         flag = true;
-      } /////// indices ///////
-      else if (av[opn][1] == 'R') {
-        opn += 1;
+      } else if (av[opn][1] == 'I') {
+        switch (av[opn + 1][0]) {
+          case 'R':
+            index_type = IndexType::RMI_IDX;
+            cerr << "Index lookup: RMI \n";
+            break;
+          case 'B':
+            index_type = IndexType::BINARY_IDX;
+            cerr << "Index lookup: binary search\n";
+            break;
+          case 'H':
+            index_type = IndexType::HASH_IDX;
+            cerr << "Index lookup: hash table\n";
+            break;
+        }
+        opn += 2;
         flag = true;
-        index_type = IndexType::RMI_IDX;
-        cerr << "Using RMI index\n";
-      } else if (av[opn][1] == 'B') {
-        opn += 1;
-        flag = true;
-        index_type = IndexType::BINARY_IDX;
-        cerr << "Using binary search\n";
-      }else if (av[opn][1] == 'H') {
-        opn += 1;
-        flag = true;
-        index_type = IndexType::HASH_IDX;
-        cerr << "Using hash table\n";
-      }
-      else if (av[opn][1] == 'w') {
+      } else if (av[opn][1] == 'w') {
         enable_wfa_extension = true;
         opn += 1;
         flag = true;
