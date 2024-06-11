@@ -12,16 +12,15 @@ class Embedding {
                int strid, char *embeddedQ);
   void cgk2_embedQ(const char *oridata, unsigned rlen, int strid, char *embeddedQ);
   int cgk2_embed_nmismatch(const char *oridata, unsigned rlen, int threshold, int strid, char *embeddedQ);
-  void embed_unmatch_iter(vector<Region> &candidate_regions, const char *ptr_ref, const char *r, const unsigned rlen,
-                          const unsigned kmer_len, int &best_threshold, int &next_threshold,
-                          unsigned &best_idx, unsigned &next_idx);
-  void embed_unmatch(vector<Region> &candidate_regions, const char *ptr_ref, const char *r, const unsigned rlen,
-                     const unsigned kmer_step, bool flag_f1[]);
+  void embed_unmatch_iter(vector<Region> &candidate_regions, const char *ptr_ref, Read &R,
+                          int &best_threshold, int &next_threshold, unsigned &best_idx, unsigned &next_idx);
+  void embed_unmatch(vector<Region> &candidate_regions, const char *ptr_ref, Read &R, bool flag_f1[]);
   void embed_unmatch_pair(Read &mate1, Read &mate2,
                           vector<Region> &candidate_regions_f1, vector<Region> &candidate_regions_r2,
-                          const char *ptr_ref, const char *r, const unsigned rlen, const unsigned kmer_step,
+                          const char *ptr_ref,
                           bool flag_r2[], unsigned pairdis, int &best_threshold, int &next_threshold,
                           unsigned &best_f1, unsigned &best_r2);
+  int hamdist(const char *r, const char *ref, int rlen);
 
   //unsigned char **hash_eb;
   std::bitset<TOTAL_RBITS> hash_eb;

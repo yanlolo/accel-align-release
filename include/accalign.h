@@ -33,16 +33,16 @@ class AccAlign {
                      tbb::concurrent_bounded_queue<ReadPair> *dataQ);
   void embed_wrapper(Read &R, bool ispe, vector<Region> &fregion,
                      vector<Region> &rregion, unsigned &fbest, unsigned &fnext, unsigned &rbest,
-                     unsigned &rnext, int &best_threshold, int &next_threshold, int ref_id);
+                     unsigned &rnext, int &best_threshold, int &next_threshold, int ref_id, bool best_is_fwd);
   void pghole_wrapper(Read &R, vector<Region> &fcandidate_regions, vector<Region> &rcandidate_regions,
-                      unsigned &fbest, unsigned &rbest, int ref_id);
+                      unsigned &best, bool &best_is_fwd, int ref_id);
   void pigeonhole_query_topcov(char *Q, size_t rlen, vector<Region> &candidate_regions, char S, int err_threshold,
-                               unsigned kmer_step, unsigned max_occ, unsigned &best, unsigned ori_slide, int ref_id);
+                               unsigned kmer_step, unsigned max_occ, unsigned &best, bool &best_if_fwd, unsigned ori_slide, int ref_id);
   void pghole_wrapper_mates(Read &R, vector<Region> &fcandidate_regions, vector<Region> &rcandidate_regions,
                             unsigned &fbest, unsigned &rbest, unsigned ori_slide, unsigned kmer_step, unsigned max_occ,
                             bool &high_freq, int ref_id);
-  void pigeonhole_query(char *Q, size_t rlen, vector<Region> &candidate_regions, char S,
-                        unsigned &best, unsigned ori_slide, int err_threshold, unsigned kmer_step,
+  void pigeonhole_query(Read &read, vector<Region> &fcandidate_regions, vector<Region> &rcandidate_regions,
+                        unsigned &best, bool &best_is_fwd, unsigned ori_slide, int err_threshold, unsigned kmer_step,
                         unsigned max_occ, bool &high_freq, int ref_id);
   void pghole_wrapper_pair(Read &mate1, Read &mate2,
                            vector<Region> &region_f1, vector<Region> &region_r1,
@@ -50,14 +50,14 @@ class AccAlign {
                            unsigned &best_f1, unsigned &best_r1, unsigned &best_f2, unsigned &best_r2,
                            unsigned &next_f1, unsigned &next_r1, unsigned &next_f2, unsigned &next_r2,
                            bool *&flag_f1, bool *&flag_r1, bool *&flag_f2, bool *&flag_r2,
-                           bool &has_f1r2, bool &has_r1f2, int ref_id);
+                           int &has_f1r2, int &has_r1f2, int ref_id);
   void pigeonhole_query_sort(char *Q, size_t rlen, vector<Region> &candidate_regions, char S,
                              unsigned err_threshold, unsigned kmer_step, unsigned max_occ,
                              unsigned &best, unsigned ori_slide, int ref_id);
-  bool pairdis_filter(vector<Region> &in_regions1, vector<Region> &in_regions2,
+  int pairdis_filter(vector<Region> &in_regions1, vector<Region> &in_regions2,
                       bool flag1[], bool flag2[],
                       unsigned &best1, unsigned &next1, unsigned &best2, unsigned &next2);
-  void mark_for_extension(Read &read, char S, Region &cregion, int ref_id);
+  void mark_for_extension(Read &read, Region &cregion, int ref_id);
   void save_region(Read &R, size_t rlen, Region &region,
                    Alignment &a);
   void score_region(Read &r, char *qseq, Region &region,
@@ -70,7 +70,7 @@ class AccAlign {
   void embed_wrapper_pair(Read &R1, Read &R2,
                           vector<Region> &candidate_regions_f1, vector<Region> &candidate_regions_r2,
                           bool flag_f1[], bool flag_r2[], unsigned &best_f1, unsigned &best_r2,
-                          int &best_threshold, int &next_threshold, char strand, int ref_id);
+                          int &best_threshold, int &next_threshold, char strand, int ref_id, int has_f1r2);
   void mm(char *Q, size_t rlen, int err_threshold, vector<Region> &fcandidate_regions, vector<Region> &rcandidate_regions,
                     unsigned &fbest, unsigned &rbest);
   inline uint32_t get_global_pos(uint64_t cr, int ref_id);
@@ -103,6 +103,10 @@ class AccAlign {
 
   uint32_t* get_posv(int ref_id){
     return refs[ref_id]->posv;
+  };
+
+  bool* get_dirv(int ref_id){
+    return refs[ref_id]->is_fwdv;
   };
 
   mm_idx_t* get_mi(int ref_id){

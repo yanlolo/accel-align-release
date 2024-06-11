@@ -40,6 +40,7 @@ struct Region {
   uint32_t qs, qe;  // start, end position of matched seed in the query (read)
   uint16_t cov;
   uint16_t embed_dist;
+  bool is_fwd;
   int as;
   std::vector<Interval> matched_intervals;  // list of start pos of matched seeds in read that indicate to this region
 
@@ -77,7 +78,7 @@ struct Region {
       Interval &interval = matched_intervals[i];
 
       size_t left = i == 0 ? 0 : matched_intervals[i - 1].e;
-      for(size_t j = 0; j + left < interval.s; ++j){
+      for(size_t j = 1; j + left < interval.s; ++j){
         if (Q[interval.s - j] != ref[rs + interval.s - j]){
           interval.s = interval.s - j + 1;
           break;
@@ -85,7 +86,7 @@ struct Region {
       }
 
       size_t right = i == matched_intervals.size() - 1 ? rlen : matched_intervals[i + 1].s;
-      for(size_t j = 0; interval.e + j < right; ++j){
+      for(size_t j = 1; interval.e + j < right; ++j){
         if (Q[interval.e + j] != ref[rs + interval.e + j]){
           interval.e = interval.e + j - 1;
           break;
@@ -140,6 +141,7 @@ class Reference {
   std::vector<std::string> name;
   std::vector<uint32_t> offset;
   uint32_t *keyv, *posv;
+  bool *is_fwdv;
   uint64_t nposv, nkeyv, nkeyv_true;
   mm_idx_t *mi;
   RMI rmi;  // this is fine
