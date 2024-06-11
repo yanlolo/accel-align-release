@@ -57,7 +57,7 @@ class AccAlign {
   bool pairdis_filter(vector<Region> &in_regions1, vector<Region> &in_regions2,
                       bool flag1[], bool flag2[],
                       unsigned &best1, unsigned &next1, unsigned &best2, unsigned &next2);
-  void mark_for_extension(Read &read, char S, Region &cregion, int ref_id);
+  void mark_for_extension(Read &read, Region &cregion, int ref_id);
   void save_region(Read &R, size_t rlen, Region &region,
                    Alignment &a);
   void score_region(Read &r, char *qseq, Region &region,
@@ -103,6 +103,10 @@ class AccAlign {
 
   uint32_t* get_posv(int ref_id){
     return refs[ref_id]->posv;
+  };
+
+  bool* get_dirv(int ref_id){
+    return refs[ref_id]->is_fwdv;
   };
 
   mm_idx_t* get_mi(int ref_id){

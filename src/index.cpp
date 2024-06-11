@@ -32,6 +32,7 @@
 using namespace std;
 namespace fs = std::experimental::filesystem;
 
+int g_ncpus = 0;
 uint64_t mod = MOD_29;    // default value is 2^29 - 1
 uint32_t mod_tmp;
 const unsigned step = 1;
@@ -41,10 +42,17 @@ unsigned kmer;
 bool enable_idx_minimizer = false, enable_bs = false; //short for bisulfite reads
 struct Data {
   uint32_t key, pos;
-  Data() : key(-1), pos(-1) {}
-  Data(uint32_t k, uint32_t p) : key(k), pos(p) {}
+  bool is_fwd; // fwd: 1, rev: 0
+  Data() : key(-1), pos(-1), is_fwd(true) {}
+  Data(uint32_t k, uint32_t p, bool dir) : key(k), pos(p), is_fwd(dir) {}
   bool operator()(const Data &X, const Data &Y) const {
-    return X.key == Y.key ? X.pos < Y.pos : X.key < Y.key;
+    if (X.key != Y.key ){
+      return X.key < Y.key;
+    } else if (X.pos != Y.pos){
+      return X.pos < Y.pos;
+    } else {
+      return X.is_fwd > Y.is_fwd;  //fwd before rev
+    }
   }
 };
 class Index {
@@ -93,17 +101,21 @@ bool Index::load_ref(const char *F, char mode) {
 }
 
 void Index::cal_key(size_t i, vector<Data> &data) {
-  uint64_t h = 0;
+  uint64_t h0 = 0, h1 = 0;
   bool hasn = false;
   for (unsigned j = 0; j < kmer; j++) {
     if (ref[i + j] == 4) {
       hasn = true;
     }
-    h = (h << 2) + ref[i + j];
+    h0 = (h0 << 2) + ref[i + j];
+    h1 = (h1 << 2) + (3ULL^ref[i + kmer - 1 - j]);
   }
+  uint64_t h = h0 < h1 ? h0 : h1;
+  bool is_fwd = h0 < h1 ? 1 : 0;
   if (!hasn) {
     data[i / step].key = uint32_t(xxh(&h) % mod);
     data[i / step].pos = i;
+    data[i / step].is_fwd = is_fwd;
   }
 }
 class Tbb_cal_key {
@@ -134,7 +146,6 @@ bool Index::make_index(const char *F, int id) {
   //use 8 bytes per item. Its a waste.
   try {
     cerr << "Attempting parallel sorting\n";
-    tbb::task_scheduler_init init(tbb::task_scheduler_init::automatic);
     tbb::parallel_sort(data.begin(), data.end(), Data());
   } catch (std::bad_alloc &e) {
     cerr << "Fall back to serial sorting (low mem)\n";
@@ -148,7 +159,7 @@ bool Index::make_index(const char *F, int id) {
     fn += ".hash" + to_string(kmer);
   ofstream fo(fn.c_str(), ios::binary);
   // determine the number of valid entries based on first junk entry
-  auto joff = std::lower_bound(data.begin(), data.end(), Data(-1, -1), Data());
+  auto joff = std::lower_bound(data.begin(), data.end(), Data(-1, -1, 1), Data());
   size_t eof = joff - data.begin();
   cerr << "Found " << eof << " valid entries out of " <<
        data.size() << " total\n";
@@ -221,6 +232,23 @@ bool Index::make_index(const char *F, int id) {
       fo.write((char *) &offset, 4);
     }
   }
+
+  // write out direction fwd/rev
+  try {
+    cerr << "Fast writing direction (is_fwd) (" << eof << ")\n";
+    bool *buf = new bool[eof];
+    for (size_t i = 0; i < eof; i++) {
+      buf[i] = data[i].is_fwd;
+    }
+    fo.write((char *) buf, eof * sizeof(bool));
+    delete[] buf;
+  } catch (std::bad_alloc &e) {
+    cerr << "Fall back to slow writing posv due to low mem.\n";
+    for (size_t i = 0; i < eof; i++) {
+      fo.write((char *) &data[i].is_fwd, sizeof(bool));
+    }
+  }
+
   cerr << "Indexing complete\n";
   fo.close();
   return true;
@@ -488,6 +516,7 @@ int main(int ac, char **av) {
       cerr << "\t-k minimizer: k, kmer size \n";
       cerr << "\t-w minimizer: w, window size \n";
       cerr << "\t-s bisulfite sequencing read alignment mode \n";
+      cerr << "\t-t INT Number of cpu threads to use [all] \n";
       return 0;
     }
 
@@ -496,6 +525,8 @@ int main(int ac, char **av) {
     for (int it = 1; it < ac; it++) {
       if (strcmp(av[it], "-l") == 0)
         kmer_temp = atoi(av[it + 1]);
+      else if (strcmp(av[it], "-t") == 0)
+        g_ncpus = atoi(av[it + 1]);
       else if (strcmp(av[it], "-m") == 0)
         enable_idx_minimizer = true;
       else if (strcmp(av[it], "-k") == 0)
@@ -514,6 +545,12 @@ int main(int ac, char **av) {
         }
       }
     }
+
+    if (g_ncpus)
+      tbb::task_scheduler_init init(g_ncpus);
+    else
+      tbb::task_scheduler_init init(tbb::task_scheduler_init::automatic);
+
     string fn = av[ac - 1]; //input ref file name
     bind_xxhash(xxh_type, xxh);
 

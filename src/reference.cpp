@@ -219,6 +219,7 @@ void Reference::load_index_classic(const char *F) {
 
   size_t posv_sz = (size_t) nposv * sizeof(uint32_t);
   uint64_t keyv_sz = (uint64_t) nkeyv * sizeof(uint32_t);
+  size_t is_fwdv_sz = (size_t) nposv * sizeof(bool);
   int fd = open(fn.c_str(), O_RDONLY);
 
 #if __linux__
@@ -234,10 +235,11 @@ void Reference::load_index_classic(const char *F) {
 #define MMAP_FLAGS MAP_PRIVATE
 #endif
 
-  char *base = reinterpret_cast<char *>(mmap(NULL, 12 + posv_sz + keyv_sz, PROT_READ, MMAP_FLAGS, fd, 0));
+  char *base = reinterpret_cast<char *>(mmap(NULL, 12 + posv_sz + keyv_sz + is_fwdv_sz, PROT_READ, MMAP_FLAGS, fd, 0));
   assert(base != MAP_FAILED);
   posv = (uint32_t * )(base + 12);
-  keyv = posv + nposv;
+  keyv = (uint32_t * )(posv + nposv);
+  is_fwdv = (bool * )(keyv + nkeyv);
   cerr << "Mapping done" << endl;
   cerr << "done loading hashtable\n";
 
