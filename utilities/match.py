@@ -12,7 +12,7 @@ with open(ref_path, 'r') as file:
     for ref_skip, line in enumerate(file):
         if 'NM' in line:
             rlen = len(line.split('\t')[9])
-            match = rlen / 10
+            match = rlen * 0.9
             break
 
 print('Skipping the header: first ' + str(ref_skip) + ' lines in the reference file')
