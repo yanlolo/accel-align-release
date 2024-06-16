@@ -149,7 +149,366 @@ void AccAlign::print_stats() {
 //#endif
 }
 
+bool AccAlign::fastq(const char *F1, const char *F2, bool enable_gpu) {
 
+  bool is_paired = false;
+
+  gzFile in1 = gzopen(F1, "rt");
+  if (in1 == Z_NULL)
+    return false;
+
+  gzFile in2 = Z_NULL;
+  if (strlen(F2) > 0) {
+    is_paired = true;
+    in2 = gzopen(F2, "rt");
+    if (in2 == Z_NULL)
+      return false;
+  }
+
+  cerr << "Reading fastq file " << F1 << ", " << F2 << "\n";
+
+  // start CPU and GPU master threads, they consume reads from inputQ
+  // dataQ is to re-use
+  tbb::concurrent_bounded_queue<ReadCnt> inputQ;
+  tbb::concurrent_bounded_queue<ReadCnt> outputQ;
+  tbb::concurrent_bounded_queue<ReadPair> dataQ;
+
+  thread cpu_thread = thread(&AccAlign::cpu_root_fn, this, &inputQ, &outputQ);
+  thread out_thread = thread(&AccAlign::output_root_fn, this, &outputQ, &dataQ);
+
+  auto start = std::chrono::system_clock::now();
+
+  int total_nreads = 0, nreads_per_vec = 0, vec_index = 0, vec_size = 50;
+
+  int batch_size = BATCH_SIZE;
+  if (is_paired)
+    batch_size /= 2;
+  Read *reads[vec_size];
+  reads[vec_index] = new Read[batch_size];
+  Read *reads2[vec_size];
+  if (is_paired) {
+    reads2[vec_index] = new Read[batch_size];
+  }
+
+  bool neof1 = (!gzeof(in1) && gzgetc(in1) != EOF);
+  bool neof2 = (!is_paired || (!gzeof(in2) && gzgetc(in2) != EOF));
+  while (vec_index < vec_size && neof1 && neof2) {
+    Read &r = *(reads[vec_index] + nreads_per_vec);
+    in1 >> r;
+
+    if (!strlen(r.seq)) {
+      break;
+    }
+
+    if (is_paired) {
+      Read &r2 = *(reads2[vec_index] + nreads_per_vec);
+      in2 >> r2;
+
+      if (!strlen(r2.seq)) {
+        break;
+      }
+    }
+    neof1 = (!gzeof(in1) && gzgetc(in1) != EOF);
+    neof2 = (!is_paired || (!gzeof(in2) && gzgetc(in2) != EOF));
+
+    ++nreads_per_vec;
+
+    if (nreads_per_vec == batch_size) {
+      if (is_paired)
+        inputQ.push(make_tuple(reads[vec_index], reads2[vec_index], batch_size));
+      else
+        inputQ.push(make_tuple(reads[vec_index], (Read *) NULL, batch_size));
+
+      vec_index++;
+
+      if (vec_index < vec_size) {
+        reads[vec_index] = new Read[batch_size];
+        if (is_paired)
+          reads2[vec_index] = new Read[batch_size];
+      }
+
+      total_nreads += nreads_per_vec;
+      nreads_per_vec = 0;
+    }
+  }
+
+  ReadPair cur_vec = make_tuple((Read *) NULL, (Read *) NULL);
+
+  // the nb of reads is less than vec_size *BATCH_SIZE, and there are some reads not pushed to inputQ
+  if (nreads_per_vec && vec_index < vec_size) {
+    // the remaining reads
+    if (is_paired)
+      inputQ.push(make_tuple(reads[vec_index], reads2[vec_index], nreads_per_vec));
+    else
+      inputQ.push(make_tuple(reads[vec_index], (Read *) NULL, nreads_per_vec));
+
+    total_nreads += nreads_per_vec;
+  } else {
+    // still have reads not loaded
+    dataQ.pop(cur_vec);
+
+    while (neof1 && neof2) {
+      Read &r = *(std::get<0>(cur_vec) + nreads_per_vec);
+      in1 >> r;
+
+      if (!strlen(r.seq)) {
+        break;
+      }
+
+      if (is_paired) {
+        Read &r2 = *(std::get<1>(cur_vec) + nreads_per_vec);
+        in2 >> r2;
+
+        if (!strlen(r2.seq)) {
+          break;
+        }
+      }
+      neof1 = (!gzeof(in1) && gzgetc(in1) != EOF);
+      neof2 = (!is_paired || (!gzeof(in2) && gzgetc(in2) != EOF));
+
+      ++nreads_per_vec;
+
+      if (nreads_per_vec == batch_size) {
+        inputQ.push(make_tuple(std::get<0>(cur_vec), std::get<1>(cur_vec), batch_size));
+        dataQ.pop(cur_vec);
+        total_nreads += nreads_per_vec;
+        nreads_per_vec = 0;
+      }
+    }
+
+    // the remaining reads
+    if (nreads_per_vec) {
+      total_nreads += nreads_per_vec;
+      inputQ.push(make_tuple(std::get<0>(cur_vec), std::get<1>(cur_vec), nreads_per_vec));
+    }
+  }
+
+  gzclose(in1);
+  if (is_paired) {
+    gzclose(in2);
+  }
+
+  auto end = std::chrono::system_clock::now();
+  auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+  input_io_time += elapsed.count();
+
+  cerr << "done reading " << total_nreads << " reads from fastq file " << F1 << ", " << F2 << " in " <<
+       input_io_time / 1000000.0 << " secs\n";
+
+  ReadCnt sentinel = make_tuple((Read *) NULL, (Read *) NULL, 0);
+  inputQ.push(sentinel);
+
+  int size = vec_index < vec_size ? vec_index : vec_size;
+  start = std::chrono::system_clock::now();
+  if (total_nreads % batch_size == 0) {
+    //because the last popped cur_vec has not been pushed back
+    size -= 1;
+    delete[] std::get<0>(cur_vec);
+
+    if (is_paired)
+      delete[] std::get<1>(cur_vec);
+  }
+  for (int i = 0; i < size; i++) {
+    dataQ.pop(cur_vec);
+    delete[] std::get<0>(cur_vec);
+
+    if (is_paired)
+      delete[] std::get<1>(cur_vec);
+  }
+  end = std::chrono::system_clock::now();
+  elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+  delTime += elapsed.count();
+
+  cpu_thread.join();
+
+  outputQ.push(sentinel);
+  out_thread.join();
+
+  cerr << "Processed " << total_nreads << " in total \n";
+  return true;
+}
+
+
+void AccAlign::output_root_fn(tbb::concurrent_bounded_queue<ReadCnt> *outputQ,
+                              tbb::concurrent_bounded_queue<ReadPair> *dataQ) {
+  cerr << "Extension and output function starting.." << endl;
+
+  unsigned nreads = 0;
+  tbb::concurrent_bounded_queue<ReadCnt> *targetQ = outputQ;
+  do {
+    ReadCnt gpu_reads;
+    targetQ->pop(gpu_reads);
+    nreads = std::get<2>(gpu_reads);
+    if (!nreads) {
+      targetQ->push(gpu_reads);   //put sentinel back
+      break;
+    }
+    align_wrapper(0, 0, nreads, std::get<0>(gpu_reads), std::get<1>(gpu_reads), dataQ);
+  } while (1);
+
+  cerr << "Extension and output function quitting...\n";
+}
+
+class Parallel_mapper {
+  Read *all_reads1;
+  Read *all_reads2;
+  AccAlign *acc_obj;
+
+ public:
+  Parallel_mapper(Read *_all_reads1, Read *_all_reads2, AccAlign *_acc_obj) :
+      all_reads1(_all_reads1), all_reads2(_all_reads2), acc_obj(_acc_obj) {}
+
+  void operator()(const tbb::blocked_range<size_t> &r) const {
+    if (!all_reads2) {
+      for (size_t i = r.begin(); i != r.end(); ++i) {
+        acc_obj->map_read_wrapper(*(all_reads1 + i));
+      }
+    } else {
+      for (size_t i = r.begin(); i != r.end(); ++i) {
+        acc_obj->map_paired_read_wrapper(*(all_reads1 + i), *(all_reads2 + i));
+      }
+    }
+  }
+};
+
+void AccAlign::cpu_root_fn(tbb::concurrent_bounded_queue<ReadCnt> *inputQ,
+                           tbb::concurrent_bounded_queue<ReadCnt> *outputQ) {
+  cerr << "CPU Root function starting.." << endl;
+
+  tbb::concurrent_bounded_queue<ReadCnt> *targetQ = inputQ;
+  int nreads = 0, total = 0;
+  do {
+    ReadCnt cpu_readcnt;
+    targetQ->pop(cpu_readcnt);
+    nreads = std::get<2>(cpu_readcnt);
+    total += nreads;
+    if (nreads == 0) {
+      inputQ->push(cpu_readcnt);    // push sentinel back
+      break;
+    }
+
+    tbb::task_scheduler_init init(g_ncpus);
+    tbb::parallel_for(tbb::blocked_range<size_t>(0, nreads),
+                      Parallel_mapper(std::get<0>(cpu_readcnt), std::get<1>(cpu_readcnt), this)
+    );
+
+    outputQ->push(cpu_readcnt);
+  } while (1);
+
+  cerr << "Processed " << total << " reads in cpu \n";
+  cerr << "CPU Root function quitting.." << endl;
+}
+
+class Tbb_aligner {
+  Read *all_reads;
+  string *sams;
+  AccAlign *acc_obj;
+
+ public:
+  Tbb_aligner(Read *_all_reads, string *_sams, AccAlign *_acc_obj) :
+      all_reads(_all_reads), sams(_sams), acc_obj(_acc_obj) {}
+
+  void operator()(const tbb::blocked_range<size_t> &r) const {
+    for (size_t i = r.begin(); i != r.end(); ++i) {
+      if ((all_reads + i)->strand != '*') {
+        if (enable_wfa_extension)
+          acc_obj->wfa_align_read(*(all_reads + i));
+        else
+          acc_obj->align_read(*(all_reads + i));
+      }
+      acc_obj->snprintf_sam(*(all_reads + i), sams + i);
+    }
+  }
+};
+
+void AccAlign::align_wrapper(int tid, int soff, int eoff, Read *ptlread, Read *ptlread2,
+                             tbb::concurrent_bounded_queue<ReadPair> *dataQ) {
+
+  if (!ptlread2) {
+    // single-end read alignment
+    string sams[eoff];
+    tbb::task_scheduler_init init(g_ncpus);
+    tbb::parallel_for(tbb::blocked_range<size_t>(soff, eoff), Tbb_aligner(ptlread, sams, this));
+
+    auto start = std::chrono::system_clock::now();
+    for (int i = soff; i < eoff; i++) {
+      out_sam(sams + i);
+    }
+    auto end = std::chrono::system_clock::now();
+    auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+    sam_time += elapsed.count();
+
+    dataQ->push(make_tuple(ptlread, (Read *) NULL));
+  }
+//  else {
+//    string sams[2 * eoff];
+//    tbb::task_scheduler_init init(g_ncpus);
+//    tbb::parallel_for(tbb::blocked_range<size_t>(soff, eoff), Tbb_aligner_paired(ptlread, ptlread2, sams, this));
+//
+//    auto start = std::chrono::system_clock::now();
+//    for (int i = soff; i < 2 * eoff; i++) {
+//      out_sam(sams + i);
+//    }
+//    auto end = std::chrono::system_clock::now();
+//    auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+//    sam_time += elapsed.count();
+//
+//    dataQ->push(make_tuple(ptlread, ptlread2));
+//  }
+}
+
+void AccAlign::snprintf_sam(Read &R, string *s) {
+  auto start = std::chrono::system_clock::now();
+
+  // 50 is the approximate length for all int
+  int size;
+  if (!enable_extension) {
+    size = 50;
+  } else {
+    size = 50 + strlen(R.seq); //assume the length of cigar will not longer than the read
+  }
+
+  string format = "%s\t%d\t%s\t%d\t%d\t%s\t*\t0\t0\t%s\t%s\tNM:i:%d\tAS:i:%d\n";
+  if (R.strand == '*') {
+    size += strlen(R.name) + 2 * strlen(R.seq);
+    char buf[size];
+    snprintf(buf, size, format.c_str(),
+             R.name, 0, "*", 0, 0, "*", R.seq, R.qua, 0, 0);
+    *s = buf;
+  } else {
+    size += strlen(R.name) + get_name(R.ref_id)[R.tid].length() + 2 * strlen(R.seq);
+    char buf[size];
+    if (R.strand == '+') {
+      snprintf(buf, size, format.c_str(),
+               R.name, 0, get_name(R.ref_id)[R.tid].c_str(), R.pos, (int) R.mapq, R.cigar,
+               R.seq, R.qua, R.nm, R.as);
+    } else {
+      std::reverse(R.qua, R.qua + strlen(R.qua));
+      snprintf(buf, size, format.c_str(),
+               R.name, 16, get_name(R.ref_id)[R.tid].c_str(), R.pos, (int) R.mapq, R.cigar,
+               R.rev_str, R.qua, R.nm, R.as);
+    }
+    *s = buf;
+  }
+
+  auto end = std::chrono::system_clock::now();
+  auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+  sam_pre_time += elapsed.count();
+}
+
+void AccAlign::out_sam(string *s) {
+  auto start = std::chrono::system_clock::now();
+  {
+    if (sam_name.length()) {
+      sam_stream << *s;
+    } else {
+      cout << *s;
+    }
+  }
+  auto end = std::chrono::system_clock::now();
+  auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+  sam_out_time += elapsed.count();
+}
 
 void AccAlign::mark_for_extension(Read &read, char S, Region &cregion, int ref_id) {
   int rlen = strlen(read.seq);
@@ -2272,7 +2631,8 @@ int main(int ac, char **av) {
   f.open_output(g_out);
 
   if (opn == ac - 1) {
-    f.tbb_fastq(av[opn], "\0");
+    f.fastq(av[opn], "\0", false);
+    //    f.tbb_fastq(av[opn], "\0");
   } else if (opn == ac - 2) {
     f.tbb_fastq(av[opn], av[opn + 1]);
   } else {

@@ -117,6 +117,7 @@ class AccAlign {
     refs[ref_id]->index_lookup(hash,b,e);
   }
 
+  void out_sam(string *s);
   void open_output(std::string &out_file);
   void close_output();
   bool fastq(const char *F1, const char *F2, bool enable_gpu);
