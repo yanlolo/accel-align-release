@@ -10,27 +10,16 @@ make accindex_stats
 
 ##### 1.2.1 hash-based
 ```
-## index stats --> all mod/hash
-sh utilities/seed-stats.sh
-
 code_dir=/home/yiqing/code/accel-align-release/
 ref=/home/yiqing/data/fsva-hg37/hg37.fna
-in_dir=/home/yiqing/yan/input/simulate/1m/
-out_dir=/home/yiqing/yan/output/
-nthreads=12
-rlen=100
 mod=536870879
 xxh=0
 
-## index
-$code_dir/accindex -l 32 -h ${mod} -x ${xxh} $ref
+## index stats --> all mod/hash
+$code_dir/accindex_stats -l 21 -h ${mod} -x ${xxh} $ref
 
-## align
-time $code_dir/accalign -l 32 -I H -t $nthreads -o $out_dir/hash.sam $ref \
-$in_dir/sv-1m-${rlen}-r1.fastq $in_dir/sv-1m-${rlen}-r2.fastq
+sh utilities/seed-stats.sh
 
-## accuracy check
-python $code_dir/utilities/match.py $in_dir/sv-1m-${rlen}-pe-align.sam $out_dir/hash.sam $out_dir/hash.csv
 
 ```
 
