@@ -1,8 +1,8 @@
 from __future__ import division
 import pandas as pd, swifter, sys, csv
 
-# ref_path = '/home/yiqing/yan/input/simulate/10m-se-1/sv-10m-100-se-align.sam'
-# align_path = '/home/yiqing/yan/output/yiqing_hash.sam'
+# ref_path = '/home/yiqing/yan/output-bio250/accalign-cano.sam'
+# align_path = '/home/yiqing/yan/output-bio250/accalign.sam'
 # output_path = '/home/yiqing/yan/output//accalign.csv'
 ref_path = str(sys.argv[1])
 align_path = str(sys.argv[2])
@@ -12,7 +12,7 @@ with open(ref_path, 'r') as file:
     for ref_skip, line in enumerate(file):
         if 'NM' in line:
             rlen = len(line.split('\t')[9])
-            match = rlen / 10
+            match = rlen * 0.9
             break
 
 print('Skipping the header: first ' + str(ref_skip) + ' lines in the reference file')

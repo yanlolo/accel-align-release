@@ -1,10 +1,34 @@
 from __future__ import division
-import pandas as pd, sys, csv
+import pandas as pd, sys, csv, swifter
 import matplotlib.pyplot as plt
-import swifter
+
+path = '/home/yiqing/data/fsva-hg37/hg37.fna.hash21'
+out_dir = '/home/yiqing/yan/output/'
+
+data = pd.read_csv(path, sep = ",", header = None, skiprows = 2, quoting=csv.QUOTE_NONE)
 
 
-path = '/home/yiqing/data/fsva-hg37/hg37.fna.hash'
+plt.yscale('log')
+# plt.bar(data[0], data[1], color='blue', alpha=0.7)
+plt.hist(data[1], bins=500, color='blue', edgecolor='black')
+plt.xlabel('key value')
+plt.ylabel('nb of positions per key')
+plt.savefig(out_dir + "kmer21-non-cano.png")
+
+ehit = data[1].apply(lambda x: x**2).sum()
+print('[yyan-log] nb of keys: ' + str(len(data)))
+print('[yyan-log] nb of positions: ' + str(data[1].sum()))
+print('[yyan-log] Average (nb pos per key): ', data[1].mean())
+print('[yyan-log] Variance (nb pos per key): ', data[1].var())
+print('[yyan-log] E-hits (nb pos per key*nb pos per key/total nb of positions): ', ehit/data[1].sum())
+
+
+
+
+
+
+
+
 name = 'mini'
 
 # path = '/Users/yan/Desktop/eurecom_code/accel-align-release/data/hg37-mini.fna.hash'
