@@ -573,7 +573,7 @@ void AccAlign::pghole_wrapper(Read &R,
 
     // MAX_OCC, cov >= 2
 //  while (kmer_step > 0 && !nfregions && !nrregions) {
-    while (ori_slide < slide && !nfregions && !nrregions) {
+//    while (ori_slide < slide && !nfregions && !nrregions) {
 
       unsigned nkmers = (rlen - ori_slide - kmer_len) / kmer_step + 1;
 
@@ -582,6 +582,8 @@ void AccAlign::pghole_wrapper(Read &R,
       // as cov2 is faster than top2, use cov2
       pigeonhole_query(R.fwd, rlen, fcandidate_regions, '+', fbest, ori_slide, 2, kmer_step, MAX_OCC, high_freq, ref_id);
       pigeonhole_query(R.rev, rlen, rcandidate_regions, '-', rbest, ori_slide, 2, kmer_step, MAX_OCC, high_freq, ref_id);
+    cout << R.name << ";" << fcandidate_regions.size() << endl;
+    cout << R.name << ";" << rcandidate_regions.size() << endl;
 //    } else {
 //      pigeonhole_query_topcov(R.fwd, rlen, fcandidate_regions, '+', 2, kmer_step, MAX_OCC, fbest, ori_slide, ref_id);
 //      pigeonhole_query_topcov(R.rev, rlen, rcandidate_regions, '-', 2, kmer_step, MAX_OCC, rbest, ori_slide, ref_id);
@@ -592,6 +594,8 @@ void AccAlign::pghole_wrapper(Read &R,
       if (!nfregions && !nrregions) {
         pigeonhole_query(R.fwd, rlen, fcandidate_regions, '+', fbest, ori_slide, 1, kmer_step, MAX_OCC, high_freq, ref_id);
         pigeonhole_query(R.rev, rlen, rcandidate_regions, '-', rbest, ori_slide, 1, kmer_step, MAX_OCC, high_freq, ref_id);
+        cout << R.name << ";" << fcandidate_regions.size() << endl;
+        cout << R.name << ";" << rcandidate_regions.size() << endl;
         nfregions = fcandidate_regions.size();
         nrregions = rcandidate_regions.size();
       }
@@ -599,7 +603,7 @@ void AccAlign::pghole_wrapper(Read &R,
       R.kmer_step = kmer_step;
       ori_slide++;
 //    kmer_step = kmer_step / 2;
-    }
+//    }
   }
 
 }
@@ -996,6 +1000,8 @@ void AccAlign::pigeonhole_query(char *Q,
     }
   }
 
+
+
   end = std::chrono::system_clock::now();
   elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
   hit_count_time += elapsed.count();
@@ -1013,6 +1019,9 @@ void AccAlign::pghole_wrapper_mates(Read &R,
   // MAX_OCC, cov >= 2
   pigeonhole_query(R.fwd, rlen, fcandidate_regions, '+', fbest, ori_slide, 2, kmer_step, max_occ, high_freq, ref_id);
   pigeonhole_query(R.rev, rlen, rcandidate_regions, '-', rbest, ori_slide, 2, kmer_step, max_occ, high_freq, ref_id);
+  cout << R.name << ";" << fcandidate_regions.size() << endl;
+  cout << R.name << ";" << rcandidate_regions.size() << endl;
+
   R.kmer_step = kmer_step;
   unsigned nfregions = fcandidate_regions.size();
   unsigned nrregions = rcandidate_regions.size();
@@ -1020,6 +1029,8 @@ void AccAlign::pghole_wrapper_mates(Read &R,
   if (!nfregions && !nrregions) {
     pigeonhole_query(R.fwd, rlen, fcandidate_regions, '+', fbest, ori_slide, 1, kmer_step, max_occ, high_freq, ref_id);
     pigeonhole_query(R.rev, rlen, rcandidate_regions, '-', rbest, ori_slide, 1, kmer_step, max_occ, high_freq, ref_id);
+    cout << R.name << ";" << fcandidate_regions.size() << endl;
+    cout << R.name << ";" << rcandidate_regions.size() << endl;
   }
 }
 
