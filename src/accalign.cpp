@@ -1229,10 +1229,10 @@ void AccAlign::pghole_wrapper_pair(Read &mate1, Read &mate2,
     kfree(km, mv2.a);
   } else if (g_stype == SeedType::Kmer) {
 
-    while (slide1 < slide && slide2 < slide) {
+//    while (slide1 < slide && slide2 < slide) {
 //  while (kmer_step1 > 0 && kmer_step2 > 0) {
-      if (has_f1r2 || has_r1f2)
-        break;
+//      if (has_f1r2 || has_r1f2)
+//        break;
 
       pghole_wrapper_mates(mate1, region_f1, region_r1, best_f1, best_r1, slide1, kmer_step, mac_occ_1, high_freq_1, ref_id);
       pghole_wrapper_mates(mate2, region_f2, region_r2, best_f2, best_r2, slide2, kmer_step, mac_occ_2, high_freq_2, ref_id);
@@ -1260,7 +1260,7 @@ void AccAlign::pghole_wrapper_pair(Read &mate1, Read &mate2,
       slide2++;
 //    kmer_step1 /= 2;
 //    kmer_step2 /= 2;
-    }
+//    }
   }
 
 }
@@ -1588,9 +1588,9 @@ void AccAlign::map_paired_read(Read &mate1, Read &mate2, int ref_id) {
                       best_f1, best_r1, best_f2, best_r2, next_f1, next_r1, next_f2, next_r2,
                       flag_f1, flag_r1, flag_f2, flag_r2, has_f1r2, has_r1f2, ref_id);
   
-  cout << mate1.name << ";" << region_f1.size() << endl;
+  cout << mate1.name << ";" << region_f1.size() << ";" << has_f1r2 << endl;
   cout << mate1.name << ";" << region_r1.size() << endl;
-  cout << mate2.name << ";" << region_f2.size() << endl;
+  cout << mate2.name << ";" << region_f2.size() << ";" << has_r1f2 << endl;
   cout << mate2.name << ";" << region_r2.size() << endl;
 
   auto end = std::chrono::system_clock::now();
@@ -1598,19 +1598,19 @@ void AccAlign::map_paired_read(Read &mate1, Read &mate2, int ref_id) {
   seeding_time += elapsed.count();
 
   if (!has_f1r2 && !has_r1f2) {
-    map_read_wrapper(mate1);
-    map_read_wrapper(mate2);
-    if (mate1.strand == '*' && mate2.strand == '*')
-      return;
-    else if (mate1.strand != '*' && mate2.strand == '*'){
-      mate2.strand = '*';
-      mate2.force_align = true;
-      mate2.pos = mate1.best_region.rs;
-    }else if (mate1.strand == '*' && mate2.strand != '*') {
-      mate1.strand = '*';
-      mate1.force_align = true;
-      mate1.pos = mate2.best_region.rs;
-    }
+//    map_read_wrapper(mate1);
+//    map_read_wrapper(mate2);
+//    if (mate1.strand == '*' && mate2.strand == '*')
+//      return;
+//    else if (mate1.strand != '*' && mate2.strand == '*'){
+//      mate2.strand = '*';
+//      mate2.force_align = true;
+//      mate2.pos = mate1.best_region.rs;
+//    }else if (mate1.strand == '*' && mate2.strand != '*') {
+//      mate1.strand = '*';
+//      mate1.force_align = true;
+//      mate1.pos = mate2.best_region.rs;
+//    }
     return;
   }
 
