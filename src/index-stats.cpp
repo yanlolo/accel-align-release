@@ -17,7 +17,6 @@
 
 #include "../strobealign/refs.hpp"
 #include "../strobealign/exceptions.hpp"
-#include "../strobealign/cmdline.hpp"
 #include "../strobealign/strobe-index.hpp"
 #include "../strobealign/pc.hpp"
 #include "../strobealign/aln.hpp"
@@ -174,7 +173,7 @@ bool Index::make_index(const char *F, int id) {
     offset = i;
     for (size_t j = last_key; j <= h; j++) {
       size_t tmp = offset - last_offset;
-      ss << to_string(tmp) << endl;
+      ss << to_string(j) << "," <<to_string(tmp) << endl;
       last_offset = offset;
     }
     last_key = h + 1;
@@ -185,7 +184,7 @@ bool Index::make_index(const char *F, int id) {
   offset = eof;
   for (uint64_t j = (uint64_t) last_key; j <= mod; j++) {
     size_t tmp = offset - last_offset;
-    ss << to_string(tmp) << endl;
+    ss << to_string(j) << "," << to_string(tmp) << endl;
   }
   outputFile << ss.str();
   outputFile.flush();
@@ -227,20 +226,6 @@ bool avx2_enabled() {
   return false;
 #endif
 }
-
-InputBuffer get_input_buffer(const CommandLineOptions& opt) {
-  if (opt.is_SE) {
-    return InputBuffer(opt.reads_filename1, "", opt.chunk_size, false);
-  } else if (opt.is_interleaved) {
-    if (opt.reads_filename2 != "") {
-      throw BadParameter("Cannot specify both --interleaved and specify two read files");
-    }
-    return InputBuffer(opt.reads_filename1, "", opt.chunk_size, true);
-  } else {
-    return InputBuffer(opt.reads_filename1, opt.reads_filename2, opt.chunk_size, false);
-  }
-}
-
 
 
 int run_strobealign(int argc, char **argv) {
