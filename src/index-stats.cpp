@@ -47,10 +47,17 @@ unsigned kmer;
 bool enable_idx_minimizer = false, enable_bs = false; //short for bisulfite reads
 struct Data {
   uint32_t key, pos;
-  Data() : key(-1), pos(-1) {}
-  Data(uint32_t k, uint32_t p) : key(k), pos(p) {}
+  bool is_fwd; // fwd: 1, rev: 0
+  Data() : key(-1), pos(-1), is_fwd(true) {}
+  Data(uint32_t k, uint32_t p, bool dir) : key(k), pos(p), is_fwd(dir) {}
   bool operator()(const Data &X, const Data &Y) const {
-    return X.key == Y.key ? X.pos < Y.pos : X.key < Y.key;
+    if (X.key != Y.key ){
+      return X.key < Y.key;
+    } else if (X.pos != Y.pos){
+      return X.pos < Y.pos;
+    } else {
+      return X.is_fwd > Y.is_fwd;  //fwd before rev
+    }
   }
 };
 class Index {
@@ -99,17 +106,21 @@ bool Index::load_ref(const char *F, char mode) {
 }
 
 void Index::cal_key(size_t i, vector<Data> &data) {
-  uint64_t h = 0;
+  uint64_t h0 = 0, h1 = 0;
   bool hasn = false;
   for (unsigned j = 0; j < kmer; j++) {
     if (ref[i + j] == 4) {
       hasn = true;
     }
-    h = (h << 2) + ref[i + j];
+    h0 = (h0 << 2) + ref[i + j];
+    h1 = (h1 << 2) + (3ULL^ref[i + kmer - 1 - j]);
   }
+  uint64_t h = h0 < h1 ? h0 : h1;
+  bool is_fwd = h0 < h1 ? 1 : 0;
   if (!hasn) {
     data[i / step].key = uint32_t(xxh(&h) % mod);
     data[i / step].pos = i;
+    data[i / step].is_fwd = is_fwd;
   }
 }
 class Tbb_cal_key {
@@ -156,7 +167,7 @@ bool Index::make_index(const char *F, int id) {
   std::ofstream outputFile(fn.c_str());
 
   // determine the number of valid entries based on first junk entry
-  auto joff = std::lower_bound(data.begin(), data.end(), Data(-1, -1), Data());
+  auto joff = std::lower_bound(data.begin(), data.end(), Data(-1, -1, 1), Data());
   size_t eof = joff - data.begin();
   cerr << "Found " << eof << " valid entries out of " << data.size() << " total\n";
 
