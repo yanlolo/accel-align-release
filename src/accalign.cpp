@@ -539,9 +539,7 @@ void AccAlign::pghole_wrapper(Read &R,
   int err_threshold = 2;
 
   if(g_stype == SeedType::Strobemer) {
-    // Retrieve Candidate Regions using Strobemer
-    find_candidate_positions_using_strobealign(R.seq, fcandidate_regions, false, ref_id);
-    find_candidate_positions_using_strobealign(R.seq, rcandidate_regions, true, ref_id);
+    find_candidate_positions_using_strobealign(R.seq, fcandidate_regions, rcandidate_regions, ref_id);
     return;
   } else if (g_stype == SeedType::Minimizer){
     // Retrieve Candidate Regions using minimizer
@@ -605,7 +603,8 @@ void AccAlign::pghole_wrapper(Read &R,
 }
 
 // @param direction: "false", if forward strang, "true" if reverse strang
-void AccAlign::find_candidate_positions_using_strobealign(char *seq, vector<Region> &candidate_regions, bool direction, int ref_id){
+void AccAlign::find_candidate_positions_using_strobealign(char *seq, vector<Region> &fcandidate_regions,
+                                                          vector<Region> &rcandidate_regions, int ref_id){
   auto query_randstrobes = randstrobes_query(string(seq), *index_parameters_reference);
   auto [nonrepetitive_fraction, nams] = find_nams(query_randstrobes, *get_strobe_index(ref_id), index_type == IndexType::RMI_IDX);
 
@@ -619,31 +618,48 @@ void AccAlign::find_candidate_positions_using_strobealign(char *seq, vector<Regi
 
   Region region;
   for(Nam &nam: nams) {
-    if((nam.is_rc == direction) && (nam.ref_start + get_offset(ref_id)[nam.ref_id] >= nam.query_start)) {
-      region.rs = nam.ref_start + get_offset(ref_id)[nam.ref_id] - nam.query_start;
+    if (nam.ref_start + get_offset(ref_id)[nam.ref_id] < nam.query_start)
+      continue;
+
+    region.rs = nam.ref_start + get_offset(ref_id)[nam.ref_id] - nam.query_start;
 //      region.re = nam.ref_e + get_offset(ref_id)[nam.ref_id]; no need to set
-      region.qs = nam.query_start;
-      region.qe = nam.query_end;
-      region.cov = nam.n_hits;
-      region.as = (int)nam.score;
-      region.matched_intervals.push_back(Interval{static_cast<uint32_t>(nam.query_start), static_cast<uint32_t>(nam.query_end)});
-      candidate_regions.push_back(move(region));
+    region.qs = nam.query_start;
+    region.qe = nam.query_end;
+    region.cov = nam.n_hits;
+    region.as = (int)nam.score;
+    region.matched_intervals.push_back(Interval{static_cast<uint32_t>(nam.query_start), static_cast<uint32_t>(nam.query_end)});
+
+    if(nam.is_rc == false) {
+      fcandidate_regions.push_back(move(region));
+    } else {
+      rcandidate_regions.push_back(move(region));
     }
   }
 
   // sort and remove duplicates
-  std::sort(candidate_regions.begin(), candidate_regions.end(),
+  std::sort(fcandidate_regions.begin(), fcandidate_regions.end(),
             [](const Region &a, const Region &b) -> bool {
               return a.rs < b.rs;
             });
 
-  auto newEnd = std::unique(candidate_regions.begin(), candidate_regions.end(),
+  std::sort(rcandidate_regions.begin(), rcandidate_regions.end(),
+            [](const Region &a, const Region &b) -> bool {
+              return a.rs < b.rs;
+            });
+
+  auto newEnd = std::unique(fcandidate_regions.begin(), fcandidate_regions.end(),
                             [](const Region& a, const Region& b) {
                               return a.rs == b.rs;
                             });
 
-  candidate_regions.resize(std::distance(candidate_regions.begin(), newEnd));
+  fcandidate_regions.resize(std::distance(fcandidate_regions.begin(), newEnd));
 
+  newEnd = std::unique(rcandidate_regions.begin(), rcandidate_regions.end(),
+                            [](const Region& a, const Region& b) {
+                              return a.rs == b.rs;
+                            });
+
+  rcandidate_regions.resize(std::distance(rcandidate_regions.begin(), newEnd));
   //TODO merge and extend the interval...
 }
 
@@ -1042,10 +1058,8 @@ void AccAlign::pghole_wrapper_pair(Read &mate1, Read &mate2,
 
   if(g_stype == SeedType::Strobemer) {
     // Retrieve Candidate Regions using Strobemer
-    find_candidate_positions_using_strobealign(mate1.seq, region_f1, false, ref_id);
-    find_candidate_positions_using_strobealign(mate1.seq, region_r1, true, ref_id);
-    find_candidate_positions_using_strobealign(mate2.seq, region_f2, false, ref_id);
-    find_candidate_positions_using_strobealign(mate2.seq, region_r2, true, ref_id);
+    find_candidate_positions_using_strobealign(mate1.seq, region_f1, region_r1, ref_id);
+    find_candidate_positions_using_strobealign(mate2.seq, region_f2, region_r2, ref_id);
 
     // filter based on pairdis
     flag_f1 = new bool[region_f1.size()]();
