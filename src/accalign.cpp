@@ -605,6 +605,8 @@ void AccAlign::pghole_wrapper(Read &R,
 // @param direction: "false", if forward strang, "true" if reverse strang
 void AccAlign::find_candidate_positions_using_strobealign(char *seq, vector<Region> &fcandidate_regions,
                                                           vector<Region> &rcandidate_regions, int ref_id){
+
+  auto start = std::chrono::system_clock::now();
   auto query_randstrobes = randstrobes_query(string(seq), *index_parameters_reference);
   auto [nonrepetitive_fraction, nams] = find_nams(query_randstrobes, *get_strobe_index(ref_id), index_type == IndexType::RMI_IDX);
 
@@ -612,10 +614,15 @@ void AccAlign::find_candidate_positions_using_strobealign(char *seq, vector<Regi
     nams = find_nams_rescue(query_randstrobes, *get_strobe_index(ref_id), map_params.rescue_cutoff, index_type == IndexType::RMI_IDX);
   }
 
+  auto end = std::chrono::system_clock::now();
+  auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+  keyvTime += elapsed.count();
+
 //  std::sort(nams.begin(), nams.end(), [](const Nam &a, const Nam &b) -> bool {
 //    return a.as > b.as;
 //  });
 
+  start = std::chrono::system_clock::now();
   Region region;
   for(Nam &nam: nams) {
     if (nam.ref_start + get_offset(ref_id)[nam.ref_id] < nam.query_start)
@@ -660,6 +667,11 @@ void AccAlign::find_candidate_positions_using_strobealign(char *seq, vector<Regi
                             });
 
   rcandidate_regions.resize(std::distance(rcandidate_regions.begin(), newEnd));
+
+  end = std::chrono::system_clock::now();
+  elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+  sortTime += elapsed.count();
+
   //TODO merge and extend the interval...
 }
 
@@ -2185,6 +2197,9 @@ void AccAlign::wfa_align_read(Read &R) {
 bool AccAlign::pairdis_filter(vector<Region> &in_regions1, vector<Region> &in_regions2,
                               bool flag1[], bool flag2[],
                               unsigned &best1, unsigned &next1, unsigned &best2, unsigned &next2) {
+
+  auto start_t = std::chrono::system_clock::now();
+
   unsigned sum_best = 0, sum_next = 0;
   // init best/next, it's out of the index, could be used to check if the value has been set
   best1 = next1 = in_regions1.size();
@@ -2226,6 +2241,10 @@ bool AccAlign::pairdis_filter(vector<Region> &in_regions1, vector<Region> &in_re
       flag2[j] = 1;
     }
   }
+
+  auto end_t = std::chrono::system_clock::now();
+  auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end_t - start_t);
+  vpair_build_time += elapsed.count();
 
   return has_pair;
 }
