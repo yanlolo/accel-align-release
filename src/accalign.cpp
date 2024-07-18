@@ -1058,7 +1058,7 @@ void AccAlign::pghole_wrapper_pair(Read &mate1, Read &mate2,
                                    unsigned &best_f1, unsigned &best_r1, unsigned &best_f2, unsigned &best_r2,
                                    unsigned &next_f1, unsigned &next_r1, unsigned &next_f2, unsigned &next_r2,
                                    bool *&flag_f1, bool *&flag_r1, bool *&flag_f2, bool *&flag_r2,
-                                   bool &has_f1r2, bool &has_r1f2, int ref_id) {
+                                   vector<pair<unsigned, unsigned>> &pair_f1r2, vector<pair<unsigned, unsigned>> &pair_r1f2, int ref_id) {
   int min_rlen = strlen(mate1.seq) < strlen(mate2.seq) ? strlen(mate1.seq) : strlen(mate2.seq);
   unsigned slide = kmer_len < min_rlen - kmer_len ? kmer_len : min_rlen - kmer_len;
 //  unsigned kmer_step1 = kmer_len, kmer_step2 = kmer_len;
@@ -1078,8 +1078,8 @@ void AccAlign::pghole_wrapper_pair(Read &mate1, Read &mate2,
     flag_r1 = new bool[region_r1.size()]();
     flag_f2 = new bool[region_f2.size()]();
     flag_r2 = new bool[region_r2.size()]();
-    has_f1r2 = pairdis_filter(region_f1, region_r2, flag_f1, flag_r2, best_f1, next_f1, best_r2, next_r2);
-    has_r1f2 = pairdis_filter(region_r1, region_f2, flag_r1, flag_f2, best_r1, next_r1, best_f2, next_f2);
+    pairdis_filter(region_f1, region_r2, flag_f1, flag_r2, best_f1, next_f1, best_r2, next_r2, pair_f1r2);
+    pairdis_filter(region_r1, region_f2, flag_r1, flag_f2, best_r1, next_r1, best_f2, next_f2, pair_r1f2);
 
   } else if (g_stype == SeedType::Minimizer) {
     //  mm(mate1.fwd, min_rlen, 2, region_f1, region_r1, best_f1, best_r1);
@@ -1106,10 +1106,10 @@ void AccAlign::pghole_wrapper_pair(Read &mate1, Read &mate2,
     flag_r1 = new bool[region_r1.size()]();
     flag_f2 = new bool[region_f2.size()]();
     flag_r2 = new bool[region_r2.size()]();
-    has_f1r2 = pairdis_filter(region_f1, region_r2, flag_f1, flag_r2, best_f1, next_f1, best_r2, next_r2);
-    has_r1f2 = pairdis_filter(region_r1, region_f2, flag_r1, flag_f2, best_r1, next_r1, best_f2, next_f2);
+    pairdis_filter(region_f1, region_r2, flag_f1, flag_r2, best_f1, next_f1, best_r2, next_r2, pair_f1r2);
+    pairdis_filter(region_r1, region_f2, flag_r1, flag_f2, best_r1, next_r1, best_f2, next_f2, pair_r1f2);
 
-    if (!has_f1r2 && !has_r1f2) {
+    if (!pair_f1r2.size() && !pair_r1f2.size()) {
       region_f1.clear();
       region_f2.clear();
       region_r1.clear();
@@ -1127,11 +1127,11 @@ void AccAlign::pghole_wrapper_pair(Read &mate1, Read &mate2,
       flag_r1 = new bool[region_r1.size()]();
       flag_f2 = new bool[region_f2.size()]();
       flag_r2 = new bool[region_r2.size()]();
-      has_f1r2 = pairdis_filter(region_f1, region_r2, flag_f1, flag_r2, best_f1, next_f1, best_r2, next_r2);
-      has_r1f2 = pairdis_filter(region_r1, region_f2, flag_r1, flag_f2, best_r1, next_r1, best_f2, next_f2);
+      pairdis_filter(region_f1, region_r2, flag_f1, flag_r2, best_f1, next_f1, best_r2, next_r2, pair_f1r2);
+      pairdis_filter(region_r1, region_f2, flag_r1, flag_f2, best_r1, next_r1, best_f2, next_f2, pair_r1f2);
     }
 
-    if (!has_f1r2 && !has_r1f2) {
+    if (!pair_f1r2.size() && !pair_r1f2.size()) {
       err_threshold = 1;
       region_f1.clear();
       region_f2.clear();
@@ -1151,10 +1151,10 @@ void AccAlign::pghole_wrapper_pair(Read &mate1, Read &mate2,
       flag_r1 = new bool[region_r1.size()]();
       flag_f2 = new bool[region_f2.size()]();
       flag_r2 = new bool[region_r2.size()]();
-      has_f1r2 = pairdis_filter(region_f1, region_r2, flag_f1, flag_r2, best_f1, next_f1, best_r2, next_r2);
-      has_r1f2 = pairdis_filter(region_r1, region_f2, flag_r1, flag_f2, best_r1, next_r1, best_f2, next_f2);
+      pairdis_filter(region_f1, region_r2, flag_f1, flag_r2, best_f1, next_f1, best_r2, next_r2, pair_f1r2);
+      pairdis_filter(region_r1, region_f2, flag_r1, flag_f2, best_r1, next_r1, best_f2, next_f2, pair_r1f2);
 
-      if (!has_f1r2 && !has_r1f2) {
+      if (!pair_f1r2.size() && !pair_r1f2.size()) {
         region_f1.clear();
         region_f2.clear();
         region_r1.clear();
@@ -1172,8 +1172,8 @@ void AccAlign::pghole_wrapper_pair(Read &mate1, Read &mate2,
         flag_r1 = new bool[region_r1.size()]();
         flag_f2 = new bool[region_f2.size()]();
         flag_r2 = new bool[region_r2.size()]();
-        has_f1r2 = pairdis_filter(region_f1, region_r2, flag_f1, flag_r2, best_f1, next_f1, best_r2, next_r2);
-        has_r1f2 = pairdis_filter(region_r1, region_f2, flag_r1, flag_f2, best_r1, next_r1, best_f2, next_f2);
+        pairdis_filter(region_f1, region_r2, flag_f1, flag_r2, best_f1, next_f1, best_r2, next_r2, pair_f1r2);
+        pairdis_filter(region_r1, region_f2, flag_r1, flag_f2, best_r1, next_r1, best_f2, next_f2, pair_r1f2);
       }
     }
 
@@ -1183,7 +1183,7 @@ void AccAlign::pghole_wrapper_pair(Read &mate1, Read &mate2,
 
     while (slide1 < slide && slide2 < slide) {
 //  while (kmer_step1 > 0 && kmer_step2 > 0) {
-      if (has_f1r2 || has_r1f2)
+      if (pair_f1r2.size() || pair_r1f2.size())
         break;
 
       pghole_wrapper_mates(mate1, region_f1, region_r1, best_f1, best_r1, slide1, kmer_step, mac_occ_1, high_freq_1, ref_id);
@@ -1194,10 +1194,10 @@ void AccAlign::pghole_wrapper_pair(Read &mate1, Read &mate2,
       flag_r1 = new bool[region_r1.size()]();
       flag_f2 = new bool[region_f2.size()]();
       flag_r2 = new bool[region_r2.size()]();
-      has_f1r2 = pairdis_filter(region_f1, region_r2, flag_f1, flag_r2, best_f1, next_f1, best_r2, next_r2);
-      has_r1f2 = pairdis_filter(region_r1, region_f2, flag_r1, flag_f2, best_r1, next_r1, best_f2, next_f2);
+      pairdis_filter(region_f1, region_r2, flag_f1, flag_r2, best_f1, next_f1, best_r2, next_r2, pair_f1r2);
+      pairdis_filter(region_r1, region_f2, flag_r1, flag_f2, best_r1, next_r1, best_f2, next_f2, pair_r1f2);
 
-      if (!has_f1r2 && !has_r1f2) {
+      if (!pair_f1r2.size() && !pair_r1f2.size()) {
         region_f1.clear();
         region_f2.clear();
         region_r1.clear();
@@ -1214,13 +1214,12 @@ void AccAlign::pghole_wrapper_pair(Read &mate1, Read &mate2,
 //    kmer_step2 /= 2;
     }
   }
-
 }
 
 void AccAlign::embed_wrapper_pair(Read &R1, Read &R2,
                                   vector<Region> &candidate_regions_f1, vector<Region> &candidate_regions_r2,
                                   bool flag_f1[], bool flag_r2[], unsigned &best_f1, unsigned &best_r2,
-                                  int &best_threshold, int &next_threshold, char strand, int ref_id) {
+                                  int &best_threshold, int &next_threshold, char strand, int ref_id, vector<pair<unsigned, unsigned>> &pair_f1r2) {
   const char *ptr_ref = get_ref(ref_id).c_str();
   char *seq1, *seq2;
   if (strand == '+') {
@@ -1237,7 +1236,7 @@ void AccAlign::embed_wrapper_pair(Read &R1, Read &R2,
   embedding->embed_unmatch(candidate_regions_f1, ptr_ref, seq1, strlen(R1.seq), R1.kmer_step, flag_f1);
   //embed r2
   embedding->embed_unmatch_pair(R1, R2, candidate_regions_f1, candidate_regions_r2, ptr_ref, seq2, strlen(R2.seq),
-                                R2.kmer_step, flag_r2, pairdis, best_threshold, next_threshold, best_f1, best_r2);
+                                R2.kmer_step, flag_r2, pairdis, best_threshold, next_threshold, best_f1, best_r2, pair_f1r2);
 }
 
 void AccAlign::embed_wrapper(Read &R, bool ispe,
@@ -1617,7 +1616,6 @@ void AccAlign::map_paired_read(Read &mate1, Read &mate2, int ref_id) {
   unsigned best_f1 = 0, best_r1 = 0, best_f2 = 0, best_r2 = 0;
   unsigned next_f1 = 0, next_r1 = 0, next_f2 = 0, next_r2 = 0;
   bool *flag_f1 = nullptr, *flag_r1 = nullptr, *flag_f2 = nullptr, *flag_r2 = nullptr;
-  bool has_f1r2 = false, has_r1f2 = false;
 
   // lookup candidates
   unsigned min_rlen = strlen(mate1.seq) < strlen(mate2.seq) ? strlen(mate1.seq) : strlen(mate2.seq);
@@ -1627,13 +1625,14 @@ void AccAlign::map_paired_read(Read &mate1, Read &mate2, int ref_id) {
     return;
   }
 
+  vector<pair<unsigned, unsigned>> pair_f1r2, pair_r1f2;
   pghole_wrapper_pair(mate1, mate2, region_f1, region_r1, region_f2, region_r2,
                       best_f1, best_r1, best_f2, best_r2, next_f1, next_r1, next_f2, next_r2,
-                      flag_f1, flag_r1, flag_f2, flag_r2, has_f1r2, has_r1f2, ref_id);
+                      flag_f1, flag_r1, flag_f2, flag_r2, pair_f1r2, pair_r1f2, ref_id);
   auto end = std::chrono::system_clock::now();
   auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
   seeding_time += elapsed.count();
-
+  
   if (!region_f1.size() && !region_r1.size() && !region_f2.size() && !region_r2.size()){
     // no candidate at all
     return;
@@ -1643,9 +1642,9 @@ void AccAlign::map_paired_read(Read &mate1, Read &mate2, int ref_id) {
     int best_f1r2, next_f1r2, best_r1f2, next_r1f2;
     best_f1r2 = next_f1r2 = best_r1f2 = next_r1f2 = INT_MIN;
 
-    if (has_f1r2)
+    if (pair_f1r2.size() )
       extend_pair(mate1, mate2, region_f1, region_r2, flag_f1, flag_r2, best_f1, best_r2, best_f1r2, next_f1r2, '+');
-    if (has_r1f2)
+    if (pair_r1f2.size())
       extend_pair(mate1, mate2, region_r1, region_f2, flag_r1, flag_f2, best_r1, best_f2, best_r1f2, next_r1f2, '-');
 
     // if there is no candidates, the strand will remain *
@@ -2316,17 +2315,18 @@ void AccAlign::wfa_align_read(Read &R) {
   sw_time += elapsed.count();
 }
 
-bool AccAlign::pairdis_filter(vector<Region> &in_regions1, vector<Region> &in_regions2,
+void AccAlign::pairdis_filter(vector<Region> &in_regions1, vector<Region> &in_regions2,
                               bool flag1[], bool flag2[],
-                              unsigned &best1, unsigned &next1, unsigned &best2, unsigned &next2) {
+                              unsigned &best1, unsigned &next1, unsigned &best2, unsigned &next2,
+                              vector<pair<unsigned, unsigned>> &pair_f1r2) {
 
   auto start_t = std::chrono::system_clock::now();
 
   unsigned sum_best = 0, sum_next = 0;
-  // init best/next, it's out of the index, could be used to check if the value has been set
-  best1 = next1 = in_regions1.size();
-  best2 = next2 = in_regions2.size();
-  bool has_pair = false;
+//  // init best/next, it's out of the index, could be used to check if the value has been set
+//  best1 = next1 = in_regions1.size();
+//  best2 = next2 = in_regions2.size();
+  pair_f1r2.reserve(in_regions1.size() * in_regions2.size());
 
   for (unsigned i = 0; i < in_regions1.size(); i++) {
     Region tmp;
@@ -2358,7 +2358,11 @@ bool AccAlign::pairdis_filter(vector<Region> &in_regions1, vector<Region> &in_re
         next1 = i;
         next2 = j;
       }
-      has_pair = true;
+
+      pair<unsigned, unsigned> my_pair;
+      my_pair.first = i;
+      my_pair.second = j;
+      pair_f1r2.push_back(my_pair);
       flag1[i] = 1;
       flag2[j] = 1;
     }
@@ -2368,7 +2372,7 @@ bool AccAlign::pairdis_filter(vector<Region> &in_regions1, vector<Region> &in_re
   auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end_t - start_t);
   vpair_build_time += elapsed.count();
 
-  return has_pair;
+  return ;
 }
 
 void AccAlign::sam_header(void) {

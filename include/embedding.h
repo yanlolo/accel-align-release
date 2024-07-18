@@ -21,7 +21,7 @@ class Embedding {
                           vector<Region> &candidate_regions_f1, vector<Region> &candidate_regions_r2,
                           const char *ptr_ref, const char *r, const unsigned rlen, const unsigned kmer_step,
                           bool flag_r2[], unsigned pairdis, int &best_threshold, int &next_threshold,
-                          unsigned &best_f1, unsigned &best_r2);
+                          unsigned &best_f1, unsigned &best_r2, vector<pair<unsigned, unsigned>> &pair_f1r2);
 
   //unsigned char **hash_eb;
   std::bitset<TOTAL_RBITS> hash_eb;
