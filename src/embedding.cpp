@@ -299,36 +299,18 @@ void Embedding::embed_unmatch_pair(Read &mate1, Read &mate2,
                                    vector<Region> &candidate_regions_f1, vector<Region> &candidate_regions_r2,
                                    const char *ptr_ref, const char *r, const unsigned rlen, const unsigned kmer_step,
                                    bool flag_r2[], unsigned pairdis, int &best_threshold, int &next_threshold,
-                                   unsigned &best_f1, unsigned &best_r2) {
+                                   unsigned &best_f1, unsigned &best_r2, vector<pair<unsigned, unsigned>> &pair_f1r2) {
   auto start = std::chrono::system_clock::now();
 
   int elen = rlen * efactor, nmismatch;
   best_threshold = next_threshold = elen;
 
-  for (unsigned i = 0; i < candidate_regions_r2.size(); i++) {
-    if (!flag_r2[i]) {
-      continue;
-    }
+  for (unsigned i = 0; i < pair_f1r2.size(); i++) {
 
-    Region &region = candidate_regions_r2[i];
+    Region &region_f1 = candidate_regions_f1[pair_f1r2[i].first];
+    Region &region = candidate_regions_r2[pair_f1r2[i].second];
+
     region.embed_dist = elen;
-
-    Region tmp;
-    tmp.rs = region.rs < pairdis ? 0 : region.rs - pairdis;
-    auto start = lower_bound(candidate_regions_f1.begin(), candidate_regions_f1.end(), tmp,
-                             [](const Region &left, const Region &right) {
-                               return left.rs < right.rs;
-                             }
-    );
-
-    tmp.rs = region.rs + pairdis;
-    auto end = upper_bound(candidate_regions_f1.begin(), candidate_regions_f1.end(), tmp,
-                           [](const Region &left, const Region &right) {
-                             return left.rs < right.rs;
-                           }
-    );
-
-    assert(start != end);
 
     for (unsigned strid = 0; strid < NUM_STR; ++strid) {
       if (best_threshold <= 1 && next_threshold <= 1) {
@@ -348,22 +330,21 @@ void Embedding::embed_unmatch_pair(Read &mate1, Read &mate2,
         break;
     }
 
-    for (auto itr = start; itr != end; ++itr) {
-      int sum_dist = region.embed_dist + itr->embed_dist;
+    int sum_dist = region.embed_dist + region_f1.embed_dist;
 
-      if (sum_dist <= best_threshold) {
-        next_threshold = best_threshold;
-        best_threshold = sum_dist;
-        best_f1 = itr - candidate_regions_f1.begin();
-        best_r2 = i;
-        mate1.secBest = mate1.best;
-        mate2.secBest = mate2.best;
-        mate1.best = mate1.best < itr->embed_dist ? mate1.best : itr->embed_dist;
-        mate2.best = mate2.best < region.embed_dist ? mate2.best : region.embed_dist;
-      } else if (sum_dist < next_threshold) {
-        next_threshold = sum_dist;
-      }
+    if (sum_dist <= best_threshold) {
+      next_threshold = best_threshold;
+      best_threshold = sum_dist;
+      best_f1 = pair_f1r2[i].first;
+      best_r2 = pair_f1r2[i].second;
+      mate1.secBest = mate1.best;
+      mate2.secBest = mate2.best;
+      mate1.best = mate1.best < region_f1.embed_dist ? mate1.best : region_f1.embed_dist;
+      mate2.best = mate2.best < region.embed_dist ? mate2.best : region.embed_dist;
+    } else if (sum_dist < next_threshold) {
+      next_threshold = sum_dist;
     }
+
   }
 
   auto end = std::chrono::system_clock::now();

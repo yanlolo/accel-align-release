@@ -50,13 +50,13 @@ class AccAlign {
                            unsigned &best_f1, unsigned &best_r1, unsigned &best_f2, unsigned &best_r2,
                            unsigned &next_f1, unsigned &next_r1, unsigned &next_f2, unsigned &next_r2,
                            bool *&flag_f1, bool *&flag_r1, bool *&flag_f2, bool *&flag_r2,
-                           bool &has_f1r2, bool &has_r1f2, int ref_id);
+    vector<pair<unsigned, unsigned>> &pair_f1r2, vector<pair<unsigned, unsigned>> &pair_r1f2, int ref_id);
   void pigeonhole_query_sort(char *Q, size_t rlen, vector<Region> &candidate_regions, char S,
                              unsigned err_threshold, unsigned kmer_step, unsigned max_occ,
                              unsigned &best, unsigned ori_slide, int ref_id);
-  bool pairdis_filter(vector<Region> &in_regions1, vector<Region> &in_regions2,
+  void pairdis_filter(vector<Region> &in_regions1, vector<Region> &in_regions2,
                       bool flag1[], bool flag2[],
-                      unsigned &best1, unsigned &next1, unsigned &best2, unsigned &next2);
+                      unsigned &best1, unsigned &next1, unsigned &best2, unsigned &next2, vector<pair<unsigned, unsigned>> &pair_f1r2);
   void mark_for_extension(Read &read, char S, Region &cregion, int ref_id);
   void save_region(Read &R, size_t rlen, Region &region,
                    Alignment &a);
@@ -70,7 +70,7 @@ class AccAlign {
   void embed_wrapper_pair(Read &R1, Read &R2,
                           vector<Region> &candidate_regions_f1, vector<Region> &candidate_regions_r2,
                           bool flag_f1[], bool flag_r2[], unsigned &best_f1, unsigned &best_r2,
-                          int &best_threshold, int &next_threshold, char strand, int ref_id);
+                          int &best_threshold, int &next_threshold, char strand, int ref_id, vector<pair<unsigned, unsigned>> &pair_f1r2);
   void mm(char *Q, size_t rlen, int err_threshold, vector<Region> &fcandidate_regions, vector<Region> &rcandidate_regions,
                     unsigned &fbest, unsigned &rbest);
   inline uint32_t get_global_pos(uint64_t cr, int ref_id);
