@@ -2346,6 +2346,13 @@ void AccAlign::pairdis_filter(vector<Region> &in_regions1, vector<Region> &in_re
 
     for (int j = start; j < end; j++) {
       unsigned sum_cov = in_regions1[i].cov + in_regions2[j].cov;
+
+      if (g_stype == SeedType::Strobemer){
+        if (sum_cov < sum_best / 2){
+          continue;  // no impact of performance & accuracy
+        }
+      }
+
       if (sum_cov > sum_best) {
         sum_next = sum_best;
         next1 = best1;
