@@ -113,6 +113,7 @@ struct Read {
   Region best_region;
   int best, secBest;
   bool force_align = false;
+  bool rescued_mate = false;
 
   // for bs
   int best_optional, secBest_optional;

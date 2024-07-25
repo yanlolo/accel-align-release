@@ -1298,6 +1298,70 @@ int AccAlign::get_mapq(int best, int secBest) {
   return mapq;
 }
 
+void AccAlign::embed_and_mark_best(Read &R, vector<Region> &fcandidate_regions, vector<Region> &rcandidate_regions,
+                                   unsigned fbest, unsigned rbest, int ref_id){
+  auto start = std::chrono::system_clock::now();
+
+  // before doing embedding, move highest cov region to front
+  if (fcandidate_regions.size() > 1 && fbest != 0) {
+    iter_swap(fcandidate_regions.begin() + fbest, fcandidate_regions.begin());
+  }
+  if (rcandidate_regions.size() > 1 && rbest != 0) {
+    iter_swap(rcandidate_regions.begin() + rbest, rcandidate_regions.begin());
+  }
+  auto end = std::chrono::system_clock::now();
+  auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+  swap_time += elapsed.count();
+
+  start = std::chrono::system_clock::now();
+
+  unsigned fnext, rnext;
+  int best_threshold = strlen(R.seq) * embedding->efactor;
+  int next_threshold = strlen(R.seq) * embedding->efactor;
+  embed_wrapper(R, false, fcandidate_regions, rcandidate_regions, fbest, fnext, rbest, rnext,
+                best_threshold, next_threshold, ref_id);
+  end = std::chrono::system_clock::now();
+  elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+  embedding_time += elapsed.count();
+
+  start = std::chrono::system_clock::now();
+
+  if (!fcandidate_regions.size()) {
+    if (!rcandidate_regions.size())
+      return;
+    mark_for_extension(R, '-', rcandidate_regions[rbest], ref_id);
+  } else if (!rcandidate_regions.size()) {
+    mark_for_extension(R, '+', fcandidate_regions[fbest], ref_id);
+  } else {
+    // pick the candidate with smallest embed dist
+    // if fwd/rev have same embed_dist, take the hcov one
+    // if hcov one not the min dist, take the one with smaller pos (to be consistent with gpu)
+    if (fcandidate_regions[fbest].embed_dist < rcandidate_regions[rbest].embed_dist) {
+      mark_for_extension(R, '+', fcandidate_regions[fbest], ref_id);
+    } else if (fcandidate_regions[fbest].embed_dist > rcandidate_regions[rbest].embed_dist) {
+      mark_for_extension(R, '-', rcandidate_regions[rbest], ref_id);
+    } else {
+      if (fcandidate_regions[fbest].rs < rcandidate_regions[rbest].rs) {
+        mark_for_extension(R, '+', fcandidate_regions[fbest], ref_id);
+      } else {
+        mark_for_extension(R, '-', rcandidate_regions[rbest], ref_id);
+      }
+    }
+  }
+
+  if (ref_id == 0){
+    R.best = best_threshold;
+    R.secBest = next_threshold;
+  } else {
+    R.best_optional = best_threshold;
+    R.secBest_optional = next_threshold;
+  }
+
+  end = std::chrono::system_clock::now();
+  elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+  mapqTime += elapsed.count();
+}
+
 void AccAlign::map_read(Read &R, int ref_id) {
 
   auto start = std::chrono::system_clock::now();
@@ -1348,64 +1412,7 @@ void AccAlign::map_read(Read &R, int ref_id) {
     R.best_region = r;
     R.strand = strand;
   } else {
-    start = std::chrono::system_clock::now();
-    // before doing embedding, move highest cov region to front
-    if (nfregions > 1 && fbest != 0) {
-      iter_swap(fcandidate_regions.begin() + fbest, fcandidate_regions.begin());
-    }
-    if (nrregions > 1 && rbest != 0) {
-      iter_swap(rcandidate_regions.begin() + rbest, rcandidate_regions.begin());
-    }
-    end = std::chrono::system_clock::now();
-    elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-    swap_time += elapsed.count();
-
-    start = std::chrono::system_clock::now();
-    unsigned fnext, rnext;
-    int best_threshold = strlen(R.seq) * embedding->efactor;
-    int next_threshold = strlen(R.seq) * embedding->efactor;
-    embed_wrapper(R, false, fcandidate_regions, rcandidate_regions, fbest, fnext, rbest, rnext,
-                  best_threshold, next_threshold, ref_id);
-    end = std::chrono::system_clock::now();
-    elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-    embedding_time += elapsed.count();
-
-    start = std::chrono::system_clock::now();
-
-    if (nfregions == 0) {
-      if (nrregions == 0)
-        return;
-      mark_for_extension(R, '-', rcandidate_regions[rbest], ref_id);
-    } else if (nrregions == 0) {
-      mark_for_extension(R, '+', fcandidate_regions[fbest], ref_id);
-    } else {
-      // pick the candidate with smallest embed dist
-      // if fwd/rev have same embed_dist, take the hcov one
-      // if hcov one not the min dist, take the one with smaller pos (to be consistent with gpu)
-      if (fcandidate_regions[fbest].embed_dist < rcandidate_regions[rbest].embed_dist) {
-        mark_for_extension(R, '+', fcandidate_regions[fbest], ref_id);
-      } else if (fcandidate_regions[fbest].embed_dist > rcandidate_regions[rbest].embed_dist) {
-        mark_for_extension(R, '-', rcandidate_regions[rbest], ref_id);
-      } else {
-        if (fcandidate_regions[fbest].rs < rcandidate_regions[rbest].rs) {
-          mark_for_extension(R, '+', fcandidate_regions[fbest], ref_id);
-        } else {
-          mark_for_extension(R, '-', rcandidate_regions[rbest], ref_id);
-        }
-      }
-    }
-
-    if (ref_id == 0){
-      R.best = best_threshold;
-      R.secBest = next_threshold;
-    } else {
-      R.best_optional = best_threshold;
-      R.secBest_optional = next_threshold;
-    }
-
-    end = std::chrono::system_clock::now();
-    elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-    mapqTime += elapsed.count();
+    embed_and_mark_best(R, fcandidate_regions, rcandidate_regions, fbest, rbest, ref_id);
   }
 }
 
@@ -1506,6 +1513,96 @@ void AccAlign::extend_pair(Read &mate1, Read &mate2,
 //  next_threshold = -next_threshold;
 }
 
+/* Return true iff rescue by alignment was actually attempted */
+void AccAlign::rescue_mate(Read &mate, Read &mate_to_align, int ref_id) {
+  uint32_t a, b;
+  std::string r_tmp;
+  auto read_len = mate.rlen;
+
+  //TODO: check a>0, b>0
+  if (mate.strand == '-'){
+    r_tmp.assign(mate_to_align.seq, read_len);
+    a = mate.best_region.rs - mate.best_region.qs - pairdis;
+    b = mate.best_region.rs - mate.best_region.qs + read_len/2; // at most half read overlap
+  } else {
+    r_tmp.assign(mate_to_align.rev_str, read_len);// mate is rc since fr orientation
+    a = mate.best_region.rs + read_len + (read_len - mate.best_region.qe) - read_len/2; // at most half read overlap
+    b = mate.best_region.rs + read_len + (read_len - mate.best_region.qe) + pairdis;
+  }
+
+//  uint32_t ref_len = get_offset(mate.ref_id)[mate.tid + 1]; // TODO: check it is ready set
+  uint32_t ref_start = a; //std::min(a, ref_len);
+  uint32_t ref_end = b; //std::min(ref_len, b);
+  int k = 32;  // TODO, check k is 32 or 16?
+
+  if (ref_end < ref_start + k){
+    mate_to_align.cigar[0] = '\0';
+    mate_to_align.mapq = 0;
+    mate_to_align.nm = 0;
+    mate_to_align.tid = 0;
+    mate_to_align.strand = '*';
+    mate_to_align.force_align = true;
+    mate_to_align.pos = mate.best_region.rs;
+//        std::cerr << "RESCUE: Caught Bug3! ref start: " << ref_start << " ref end: " << ref_end << " ref len:  " << ref_len << std::endl;
+    return;
+  }
+
+  string ref_segm = get_ref(ref_id).substr(ref_start, ref_end - ref_start);
+  for (size_t i = 0; i < ref_end - ref_start; i++) {
+    switch(ref_segm[i]){
+      case '\000':
+        ref_segm[i] = 'A';
+        break;
+      case '\001':
+        ref_segm[i] = 'C';
+        break;
+      case '\002':
+        ref_segm[i] = 'G';
+        break;
+      case '\003':
+        ref_segm[i] = 'T';
+        break;
+    }
+  }
+
+  if (!has_shared_substring(r_tmp, ref_segm, k)){
+    mate_to_align.cigar[0] = '\0';
+    mate_to_align.mapq = 0;
+    mate_to_align.nm = 0;
+    mate_to_align.tid = 0;
+    mate_to_align.pos = 0;
+    mate_to_align.strand = '*';
+    mate_to_align.force_align = true;
+    mate_to_align.pos = mate.best_region.rs;
+//    alignment.is_unaligned = true;
+//        std::cerr << "Avoided!" << std::endl;
+    return ;
+  }
+
+  AlignmentParameters aln_params;
+  aln_params.match = SC_MCH;
+  aln_params.mismatch = SC_MIS;
+  aln_params.gap_open = GAPO;
+  aln_params.gap_extend = GAPE;
+  aln_params.end_bonus = END_BONUS;
+  Aligner aligner{aln_params};
+  auto info = aligner.align(r_tmp, ref_segm);
+
+  auto cigar = info.cigar.to_m().to_string();
+  auto cigar_c = cigar.c_str();
+  strncpy(mate_to_align.cigar, cigar_c, strlen(cigar_c));
+  mate_to_align.cigar[strlen(cigar_c)] = '\0';
+  mate_to_align.mapq = info.edit_distance;
+  mate_to_align.strand = mate.strand == '+' ? '-': '+';
+  mate_to_align.as = info.sw_score;
+  mate_to_align.pos = ref_start + info.ref_start;
+  mate_to_align.nm = info.cigar.edit_distance();
+//  mate_to_align.tid = mate.tid;
+  mate_to_align.rescued_mate = true;
+
+  return ;
+}
+
 void AccAlign::map_paired_read(Read &mate1, Read &mate2, int ref_id) {
 
   if (strlen(mate1.seq) < kmer_len || strlen(mate2.seq) < kmer_len){
@@ -1536,21 +1633,8 @@ void AccAlign::map_paired_read(Read &mate1, Read &mate2, int ref_id) {
   auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
   seeding_time += elapsed.count();
 
-  // TODO: only need to select the best one, not redo the map
-  if (!pair_f1r2.size() && !pair_r1f2.size()) {
-    map_read_wrapper(mate1);
-    map_read_wrapper(mate2);
-    if (mate1.strand == '*' && mate2.strand == '*')
-      return;
-    else if (mate1.strand != '*' && mate2.strand == '*'){
-      mate2.strand = '*';
-      mate2.force_align = true;
-      mate2.pos = mate1.best_region.rs;
-    }else if (mate1.strand == '*' && mate2.strand != '*') {
-      mate1.strand = '*';
-      mate1.force_align = true;
-      mate1.pos = mate2.best_region.rs;
-    }
+  if (!region_f1.size() && !region_r1.size() && !region_f2.size() && !region_r2.size()){
+    // no candidate at all
     return;
   }
 
@@ -1587,33 +1671,64 @@ void AccAlign::map_paired_read(Read &mate1, Read &mate2, int ref_id) {
   }
 
   start = std::chrono::system_clock::now();
-  // now apply embedding filter on filtered regions.
-  // But before, rearrange so that regions with high coverage are at the top
-  //no need to swap, just embed the best and next first..
-  int best_f1r2 = INT_MAX, next_f1r2 = INT_MAX, best_r1f2 = INT_MAX, next_r1f2 = INT_MAX;
-  if (pair_f1r2.size())
-    embed_wrapper_pair(mate1, mate2, region_f1, region_r2, flag_f1, flag_r2,
-                       best_f1, best_r2, best_f1r2, next_f1r2, '+', ref_id, pair_f1r2);
-  if (pair_r1f2.size())
-    embed_wrapper_pair(mate1, mate2, region_r1, region_f2, flag_r1, flag_f2,
-                       best_r1, best_f2, best_r1f2, next_r1f2, '-', ref_id, pair_r1f2);
 
-  delete[] flag_f1;
-  delete[] flag_r1;
-  delete[] flag_f2;
-  delete[] flag_r2;
+  if (!pair_f1r2.size() && !pair_r1f2.size()){
+    // no pair found
+    if ((region_f1.size() || region_r1.size()) && (!region_f2.size() && !region_r2.size())) {
+      // only fwd, no rev
+      embed_and_mark_best(mate1, region_f1, region_r1, best_f1, best_r1, ref_id);
+      rescue_mate(mate1, mate2, ref_id);
+    } else if ((!region_f1.size() && !region_r1.size()) && (region_f2.size() || region_r2.size())) {
+      // only rev, no fwd
+      embed_and_mark_best(mate2, region_f2, region_r2, best_f2, best_r2, ref_id);
+      rescue_mate(mate2, mate1, ref_id);
+    } else {
+      // fwd and rev
+      embed_and_mark_best(mate1, region_f1, region_r1, best_f1, best_r1, ref_id);
+      embed_and_mark_best(mate2, region_f2, region_r2, best_f2, best_r2, ref_id);
 
-  end = std::chrono::system_clock::now();
-  elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-  embedding_time += elapsed.count();
+      if (mate1.best_region.embed_dist < mate2.best_region.embed_dist)
+        rescue_mate(mate1, mate2, ref_id);
+      else
+        rescue_mate(mate2, mate1, ref_id);
+    }
 
-  start = std::chrono::system_clock::now();
-  if (best_f1r2 <= best_r1f2) {
-    mark_for_extension(mate1, '+', region_f1[best_f1], ref_id);
-    mark_for_extension(mate2, '-', region_r2[best_r2], ref_id);
+    delete[] flag_f1;
+    delete[] flag_r1;
+    delete[] flag_f2;
+    delete[] flag_r2;
+
   } else {
-    mark_for_extension(mate2, '+', region_f2[best_f2], ref_id);
-    mark_for_extension(mate1, '-', region_r1[best_r1], ref_id);
+    // has pair
+
+    // now apply embedding filter on filtered regions.
+    // But before, rearrange so that regions with high coverage are at the top
+    //no need to swap, just embed the best and next first..
+    int best_f1r2 = INT_MAX, next_f1r2 = INT_MAX, best_r1f2 = INT_MAX, next_r1f2 = INT_MAX;
+    if (pair_f1r2.size())
+      embed_wrapper_pair(mate1, mate2, region_f1, region_r2, flag_f1, flag_r2,
+                         best_f1, best_r2, best_f1r2, next_f1r2, '+', ref_id, pair_f1r2);
+    if (pair_r1f2.size())
+      embed_wrapper_pair(mate1, mate2, region_r1, region_f2, flag_r1, flag_f2,
+                         best_r1, best_f2, best_r1f2, next_r1f2, '-', ref_id, pair_r1f2);
+
+    delete[] flag_f1;
+    delete[] flag_r1;
+    delete[] flag_f2;
+    delete[] flag_r2;
+
+    end = std::chrono::system_clock::now();
+    elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+    embedding_time += elapsed.count();
+
+    start = std::chrono::system_clock::now();
+    if (best_f1r2 <= best_r1f2) {
+      mark_for_extension(mate1, '+', region_f1[best_f1], ref_id);
+      mark_for_extension(mate2, '-', region_r2[best_r2], ref_id);
+    } else {
+      mark_for_extension(mate2, '+', region_f2[best_f2], ref_id);
+      mark_for_extension(mate1, '-', region_r1[best_r1], ref_id);
+    }
   }
 
   end = std::chrono::system_clock::now();
@@ -2078,6 +2193,12 @@ void AccAlign::align_read(Read &R) {
 
   size_t rlen = strlen(R.seq);
 
+  if (R.rescued_mate){
+    R.tid = get_tid(R);
+    R.pos = R.pos - get_offset(R.ref_id)[R.tid] + 1;
+    return;  // already rescue by mate and filled
+  }
+
   if (R.strand == '*') {
     if (R.force_align){
       R.tid = get_tid(R);
@@ -2091,7 +2212,7 @@ void AccAlign::align_read(Read &R) {
         R.tid += 1;
       } else
         R.pos = R.pos - get_offset(R.ref_id)[R.tid] + 1;
-    }else {
+    } else {
       R.tid = R.pos = 0;
     }
 

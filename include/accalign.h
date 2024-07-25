@@ -76,6 +76,8 @@ class AccAlign {
   inline uint32_t get_global_pos(uint64_t cr, int ref_id);
   inline uint64_t normalize_pos(uint64_t cr, uint32_t q_pos, int k, int rlen);
   void find_candidate_positions_using_strobealign(char *seq, vector<Region> &fcandidate_regions, vector<Region> &rcandidate_regions, int ref_id);
+  void embed_and_mark_best(Read &R, vector<Region> &fcandidate_regions, vector<Region> &rcandidate_regions,
+    unsigned fbest, unsigned rbest, int ref_id);
 
  public:
   Reference **refs;
@@ -136,6 +138,7 @@ class AccAlign {
   bool tbb_fastq(const char *F1, const char *F2);
   int get_mapq(int best, int secbest);
   int get_tid(Read &R);
+  void rescue_mate(Read &mate, Read &mate_to_align, int ref_id);
   void collect_seed_hits_priorityqueue(int n_m0, int64_t n_a, size_t rlen, int err_threshold, mm_seed_t* m, vector<Region> &candidate_regions,
                                                  vector<Region> &rcandidate_regions, unsigned &best, unsigned &rbest, int ref_id);
   void fetch_candidates(mm128_v &mv, int32_t mid_occ, size_t rlen, int err_threshold,
