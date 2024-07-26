@@ -97,17 +97,27 @@ struct Region {
 };
 
 struct Read {
-  char name[MAX_LEN], qua[MAX_LEN], seq[MAX_LEN], fwd[MAX_LEN], rev[MAX_LEN], rev_str[MAX_LEN], cigar[MAX_LEN];
-  int tid, as, nm, best, secBest, best_optional, secBest_optional, rlen, ref_id;
-  uint32_t pos;
-  short mapq, kmer_step; //kmer_step used that find the seed
-  char strand;
-  Region best_region;
+  // read info
+  char name[MAX_LEN], seq[MAX_LEN], fwd[MAX_LEN], rev[MAX_LEN], rev_str[MAX_LEN];
+  int rlen, ref_id;
+  short kmer_step; //kmer_step used that find the seed
 
+  // output
+  char qua[MAX_LEN], cigar[MAX_LEN];
+  int tid, as, nm;
+  uint32_t pos;
+  short mapq;
+  char strand; // +/-
+
+  // intermedia values
+  Region best_region;
+  int best, secBest;
+  bool force_align = false;
+
+  // for bs
+  int best_optional, secBest_optional;
   char strand_optional;
   Region best_region_optional;
-
-  bool force_align = false;
 
   friend gzFile &operator>>(gzFile &in, Read &r);
 
