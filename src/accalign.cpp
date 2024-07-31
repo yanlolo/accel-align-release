@@ -1530,9 +1530,9 @@ void AccAlign::rescue_mate(Read &mate, Read &mate_to_align, int ref_id) {
     b = mate.best_region.rs + read_len + (read_len - mate.best_region.qe) + pairdis;
   }
 
-//  uint32_t ref_len = get_offset(mate.ref_id)[mate.tid + 1]; // TODO: check it is ready set
-  uint32_t ref_start = a; //std::min(a, ref_len);
-  uint32_t ref_end = b; //std::min(ref_len, b);
+  uint32_t ref_len = get_offset(mate.ref_id).back(); // TODO: check use the tid
+  uint32_t ref_start = std::min(a, ref_len);
+  uint32_t ref_end = std::min(ref_len, b);
   int k = 32;  // TODO, check k is 32 or 16?
 
   if (ref_end < ref_start + k){
