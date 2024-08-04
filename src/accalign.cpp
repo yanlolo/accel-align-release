@@ -22,7 +22,7 @@ using namespace std;
 unsigned kmer_len = 32;
 int kmer_step = 32;
 uint64_t mask;
-unsigned pairdis = 1000;
+unsigned pairdis = 1300;
 string g_out, g_batch_file, g_embed_file;
 char rcsymbol[6] = "TGCAN";
 uint8_t code[256];
