@@ -26,6 +26,48 @@ struct Region {
     else
       return X.rs < Y.rs;
   }
+
+  /*
+   * if pos is in range of match_interval, merge them togeter; kmer_len is the length of the interval
+   */
+  void add_match_interval(uint32_t pos, int32_t kmer_len) {
+    if (!matched_intervals.size()){  // no interval yet
+      matched_intervals.push_back(Interval{pos, pos + kmer_len});
+      return;
+    }
+
+    Interval &interval = matched_intervals.back();
+    if (pos >= interval.s && pos <= interval.e) { //within range
+      interval.e = pos + kmer_len;
+    } else {  //out of range
+      matched_intervals.push_back(Interval{pos, pos + kmer_len});
+    }
+
+    return;
+  }
+
+  void extend_interval(const char* ref, char* Q, int rlen) {
+    for (size_t i = 0; i < matched_intervals.size(); ++i) {
+      Interval &interval = matched_intervals[i];
+
+      size_t left = i == 0 ? 0 : matched_intervals[i - 1].e;
+      for(size_t j = 0; j + left < interval.s; ++j){
+        if (Q[interval.s - j] != ref[rs + interval.s - j]){
+          interval.s = interval.s - j + 1;
+          break;
+        }
+      }
+
+      size_t right = i == matched_intervals.size() - 1 ? rlen : matched_intervals[i + 1].s;
+      for(size_t j = 0; interval.e + j < right; ++j){
+        if (Q[interval.e + j] != ref[rs + interval.e + j]){
+          interval.e = interval.e + j - 1;
+          break;
+        }
+      }
+    }
+  }
+
 };
 
 struct Read {
