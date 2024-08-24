@@ -64,6 +64,9 @@ class AccAlign {
                           vector<Region> &candidate_regions_f1, vector<Region> &candidate_regions_r2,
                           bool flag_f1[], bool flag_r2[], unsigned &best_f1, unsigned &best_r2,
                           int &best_threshold, int &next_threshold, char strand);
+  void embed_and_mark_best(Read &R, vector<Region> &fcandidate_regions, vector<Region> &rcandidate_regions,
+                           unsigned fbest, unsigned rbest);
+
  public:
   uint32_t *keyv, *posv;
 
@@ -84,6 +87,7 @@ class AccAlign {
   bool tbb_fastq(const char *F1, const char *F2);
   int get_mapq(int best, int secbest);
   int get_tid(uint32_t pos);
+  void rescue_mate(Read &mate, Read &mate_to_align);
   AccAlign(Reference &r);
   ~AccAlign();
 };
