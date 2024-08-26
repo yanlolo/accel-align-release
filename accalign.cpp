@@ -1463,10 +1463,20 @@ void AccAlign::map_paired_read(Read &mate1, Read &mate2) {
       // only mate1, no mate2
       embed_and_mark_best(mate1, region_f1, region_r1, best_f1, best_r1);
       rescue_mate(mate1, mate2, 0);
+      if (mate2.strand == '*'){
+        mate2.strand = '*';
+        mate2.force_align = true;
+        mate2.pos = mate1.best_region.rs;
+      }
     } else if ((!region_f1.size() && !region_r1.size()) && (region_f2.size() || region_r2.size())) {
       // only mate2, no mate1
       embed_and_mark_best(mate2, region_f2, region_r2, best_f2, best_r2);
       rescue_mate(mate2, mate1, 0);
+      if (mate1.strand == '*' && mate2.strand != '*') {
+        mate1.strand = '*';
+        mate1.force_align = true;
+        mate1.pos = mate2.best_region.rs;
+      }
     } else {
       // fwd and rev
       embed_and_mark_best(mate1, region_f1, region_r1, best_f1, best_r1);
