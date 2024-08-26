@@ -87,7 +87,7 @@ class AccAlign {
   bool tbb_fastq(const char *F1, const char *F2);
   int get_mapq(int best, int secbest);
   int get_tid(uint32_t pos);
-  void rescue_mate(Read &mate, Read &mate_to_align);
+  void rescue_mate(Read &mate, Read &mate_to_align, uint32_t mate_to_align_indv_pos);
   AccAlign(Reference &r);
   ~AccAlign();
 };

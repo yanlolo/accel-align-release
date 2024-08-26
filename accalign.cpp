@@ -1254,10 +1254,18 @@ bool has_shared_substring(const std::string& read_seq, const std::string& ref_se
 
 
 /* Return true iff rescue by alignment was actually attempted */
-void AccAlign::rescue_mate(Read &mate, Read &mate_to_align) {
+void AccAlign::rescue_mate(Read &mate, Read &mate_to_align, uint32_t mate_to_align_indv_pos) {
   uint32_t a, b;
   std::string r_tmp;
-  auto read_len = strlen(mate.seq) ;
+  auto read_len = strlen(mate.seq);
+
+  AlignmentParameters aln_params;
+  aln_params.match = SC_MCH;
+  aln_params.mismatch = SC_MIS;
+  aln_params.gap_open = GAPO;
+  aln_params.gap_extend = GAPE;
+  aln_params.end_bonus = END_BONUS;
+  Aligner aligner{aln_params};
 
   //TODO: check a>0, b>0
   if (mate.strand == '-'){
@@ -1270,22 +1278,10 @@ void AccAlign::rescue_mate(Read &mate, Read &mate_to_align) {
     b = mate.best_region.rs + read_len + (read_len - mate.best_region.qe) + pairdis;
   }
 
-//  uint32_t ref_len = get_offset(mate.ref_id)[mate.tid + 1]; // TODO: check it is ready set
-  uint32_t ref_start = a; //std::min(a, ref_len);
-  uint32_t ref_end = b; //std::min(ref_len, b);
+  uint32_t ref_len = offset.back(); // TODO: check use the tid
+  uint32_t ref_start = std::min(a, ref_len);
+  uint32_t ref_end = std::min(ref_len, b);
   int k = 32;  // TODO, check k is 32 or 16?
-
-  if (ref_end < ref_start + k){
-    mate_to_align.cigar[0] = '\0';
-    mate_to_align.mapq = 0;
-    mate_to_align.nm = 0;
-    mate_to_align.tid = 0;
-    mate_to_align.strand = '*';
-    mate_to_align.force_align = true;
-    mate_to_align.pos = mate.best_region.rs;
-//        std::cerr << "RESCUE: Caught Bug3! ref start: " << ref_start << " ref end: " << ref_end << " ref len:  " << ref_len << std::endl;
-    return;
-  }
 
   string ref_segm = ref.substr(ref_start, ref_end - ref_start);
   for (size_t i = 0; i < ref_end - ref_start; i++) {
@@ -1305,39 +1301,82 @@ void AccAlign::rescue_mate(Read &mate, Read &mate_to_align) {
     }
   }
 
-  if (!has_shared_substring(r_tmp, ref_segm, k)){
-    mate_to_align.cigar[0] = '\0';
-    mate_to_align.mapq = 0;
-    mate_to_align.nm = 0;
-    mate_to_align.tid = 0;
-    mate_to_align.pos = 0;
-    mate_to_align.strand = '*';
-    mate_to_align.force_align = true;
-    mate_to_align.pos = mate.best_region.rs;
-//    alignment.is_unaligned = true;
-//        std::cerr << "Avoided!" << std::endl;
+  // consider the indel
+  string ref_segm_indv;
+  uint32_t ref_start_indv, ref_end_indv;
+  if (mate_to_align_indv_pos){
+    ref_start_indv = std::min(static_cast<uint32_t> (mate_to_align_indv_pos - read_len*0.1), ref_len);
+    ref_end_indv =  std::min(static_cast<uint32_t> (mate_to_align_indv_pos + read_len*1.1), ref_len);
+    ref_segm_indv = ref.substr(ref_start_indv, ref_end_indv - ref_start_indv);
+    for (size_t i = 0; i < ref_end_indv - ref_start_indv; i++) {
+      switch(ref_segm_indv[i]){
+        case '\000':
+          ref_segm_indv[i] = 'A';
+          break;
+        case '\001':
+          ref_segm_indv[i] = 'C';
+          break;
+        case '\002':
+          ref_segm_indv[i] = 'G';
+          break;
+        case '\003':
+          ref_segm_indv[i] = 'T';
+          break;
+      }
+    }
+  }
+
+  // TODO: mapq, tid
+  if (ref_end < ref_start + k || !has_shared_substring(r_tmp, ref_segm, k)){
+    if (mate_to_align_indv_pos){
+      auto info_indv = aligner.align(r_tmp, ref_segm_indv);
+      //cigar
+      auto cigar = info_indv.cigar.to_m().to_string();
+      auto cigar_c = cigar.c_str();
+      strncpy(mate_to_align.cigar, cigar_c, strlen(cigar_c));
+      mate_to_align.cigar[strlen(cigar_c)] = '\0';
+      mate_to_align.strand = mate.strand == '+' ? '-': '+';
+      mate_to_align.as = info_indv.sw_score;
+      mate_to_align.pos = ref_start_indv + info_indv.ref_start;
+      mate_to_align.nm = info_indv.cigar.edit_distance();
+      mate_to_align.rescued_mate = true;
+    } else {
+      mate_to_align.cigar[0] = '\0';
+      mate_to_align.nm = 0;
+      mate_to_align.tid = 0;
+      mate_to_align.pos = 0;
+      mate_to_align.strand = '*';
+      mate_to_align.force_align = true;
+      mate_to_align.pos = mate.best_region.rs;
+    }
     return ;
   }
 
-  AlignmentParameters aln_params;
-  aln_params.match = SC_MCH;
-  aln_params.mismatch = SC_MIS;
-  aln_params.gap_open = GAPO;
-  aln_params.gap_extend = GAPE;
-  aln_params.end_bonus = END_BONUS;
-  Aligner aligner{aln_params};
   auto info = aligner.align(r_tmp, ref_segm);
+  if (!mate_to_align_indv_pos){
+    auto cigar = info.cigar.to_m().to_string();
+    auto cigar_c = cigar.c_str();
+    strncpy(mate_to_align.cigar, cigar_c, strlen(cigar_c));
+    mate_to_align.cigar[strlen(cigar_c)] = '\0';
+    mate_to_align.strand = mate.strand == '+' ? '-': '+';
+    mate_to_align.as = info.sw_score;
+    mate_to_align.pos = ref_start + info.ref_start;
+    mate_to_align.nm = info.cigar.edit_distance();
+  } else {
+    auto info_indv = aligner.align(r_tmp, ref_segm_indv);
+    auto res = info_indv.sw_score < info.sw_score + 20 ? info : info_indv;
 
-  auto cigar = info.cigar.to_m().to_string();
-  auto cigar_c = cigar.c_str();
-  strncpy(mate_to_align.cigar, cigar_c, strlen(cigar_c));
-  mate_to_align.cigar[strlen(cigar_c)] = '\0';
-  mate_to_align.mapq = info.edit_distance;
-  mate_to_align.strand = mate.strand == '+' ? '-': '+';
-  mate_to_align.as = info.sw_score;
-  mate_to_align.pos = ref_start + info.ref_start;
-  mate_to_align.nm = info.cigar.edit_distance();
-//  mate_to_align.tid = mate.tid;
+    auto cigar = res.cigar.to_m().to_string();
+    auto cigar_c = cigar.c_str();
+    strncpy(mate_to_align.cigar, cigar_c, strlen(cigar_c));
+    mate_to_align.cigar[strlen(cigar_c)] = '\0';
+    mate_to_align.strand = mate.strand == '+' ? '-': '+';
+    mate_to_align.as = res.sw_score;
+    mate_to_align.pos = info_indv.sw_score < info.sw_score ? ref_start + res.ref_start: ref_start_indv + res.ref_start;
+    mate_to_align.nm = res.cigar.edit_distance();
+  }
+
+  //  mate_to_align.tid = mate.tid;
   mate_to_align.rescued_mate = true;
 
   return ;
@@ -1423,20 +1462,20 @@ void AccAlign::map_paired_read(Read &mate1, Read &mate2) {
     if ((region_f1.size() || region_r1.size()) && (!region_f2.size() && !region_r2.size())) {
       // only mate1, no mate2
       embed_and_mark_best(mate1, region_f1, region_r1, best_f1, best_r1);
-      rescue_mate(mate1, mate2);
+      rescue_mate(mate1, mate2, 0);
     } else if ((!region_f1.size() && !region_r1.size()) && (region_f2.size() || region_r2.size())) {
       // only mate2, no mate1
       embed_and_mark_best(mate2, region_f2, region_r2, best_f2, best_r2);
-      rescue_mate(mate2, mate1);
+      rescue_mate(mate2, mate1, 0);
     } else {
       // fwd and rev
       embed_and_mark_best(mate1, region_f1, region_r1, best_f1, best_r1);
       embed_and_mark_best(mate2, region_f2, region_r2, best_f2, best_r2);
 
       if (mate1.best_region.embed_dist < mate2.best_region.embed_dist)
-        rescue_mate(mate1, mate2);
+        rescue_mate(mate1, mate2, mate2.best_region.rs);
       else
-        rescue_mate(mate2, mate1);
+        rescue_mate(mate2, mate1, mate1.best_region.rs);
     }
 
     delete[] flag_f1;
