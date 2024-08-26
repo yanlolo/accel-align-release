@@ -939,7 +939,7 @@ void AccAlign::pghole_wrapper_pair(Read &mate1, Read &mate2,
     has_f1r2 = pairdis_filter(region_f1, region_r2, flag_f1, flag_r2, best_f1, next_f1, best_r2, next_r2);
     has_r1f2 = pairdis_filter(region_r1, region_f2, flag_r1, flag_f2, best_r1, next_r1, best_f2, next_f2);
 
-    if (!has_f1r2 && !has_r1f2) {
+    if (!has_f1r2 && !has_r1f2 && (slide1 + 1 < slide && slide2 + 1 < slide)) { // leave the last case for rescue mate
       region_f1.clear();
       region_f2.clear();
       region_r1.clear();
@@ -1335,7 +1335,7 @@ void AccAlign::rescue_mate(Read &mate, Read &mate_to_align, uint32_t mate_to_ali
       auto cigar_c = cigar.c_str();
       strncpy(mate_to_align.cigar, cigar_c, strlen(cigar_c));
       mate_to_align.cigar[strlen(cigar_c)] = '\0';
-      mate_to_align.strand = mate.strand == '+' ? '-': '+';
+//      mate_to_align.strand = mate.strand == '+' ? '-': '+';  // already set
       mate_to_align.as = info_indv.sw_score;
       mate_to_align.pos = ref_start_indv + info_indv.ref_start;
       mate_to_align.nm = info_indv.cigar.edit_distance();
@@ -1370,7 +1370,7 @@ void AccAlign::rescue_mate(Read &mate, Read &mate_to_align, uint32_t mate_to_ali
     auto cigar_c = cigar.c_str();
     strncpy(mate_to_align.cigar, cigar_c, strlen(cigar_c));
     mate_to_align.cigar[strlen(cigar_c)] = '\0';
-    mate_to_align.strand = mate.strand == '+' ? '-': '+';
+//    mate_to_align.strand = mate.strand == '+' ? '-': '+'; // already set
     mate_to_align.as = res.sw_score;
     mate_to_align.pos = info_indv.sw_score < info.sw_score ? ref_start + res.ref_start: ref_start_indv + res.ref_start;
     mate_to_align.nm = res.cigar.edit_distance();
