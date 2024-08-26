@@ -939,7 +939,7 @@ void AccAlign::pghole_wrapper_pair(Read &mate1, Read &mate2,
     has_f1r2 = pairdis_filter(region_f1, region_r2, flag_f1, flag_r2, best_f1, next_f1, best_r2, next_r2);
     has_r1f2 = pairdis_filter(region_r1, region_f2, flag_r1, flag_f2, best_r1, next_r1, best_f2, next_f2);
 
-    if (!has_f1r2 && !has_r1f2 && (slide1 + 1 < slide && slide2 + 1 < slide)) { // leave the last case for rescue mate
+    if (!has_f1r2 && !has_r1f2) { // leave the last case for rescue mate
       region_f1.clear();
       region_f2.clear();
       region_r1.clear();
@@ -1420,9 +1420,9 @@ void AccAlign::map_paired_read(Read &mate1, Read &mate2) {
   seeding_time += elapsed.count();
 
   if (!region_f1.size() && !region_r1.size() && !region_f2.size() && !region_r2.size()){
-    // no candidate at all
+     // no candidate at all
     return;
-  }
+   }
 
   if (extend_all) {
     int best_f1r2, next_f1r2, best_r1f2, next_r1f2;
@@ -1488,11 +1488,6 @@ void AccAlign::map_paired_read(Read &mate1, Read &mate2) {
         rescue_mate(mate2, mate1, mate1.best_region.rs);
     }
 
-    delete[] flag_f1;
-    delete[] flag_r1;
-    delete[] flag_f2;
-    delete[] flag_r2;
-
   } else {
     // has pair
 
@@ -1507,11 +1502,6 @@ void AccAlign::map_paired_read(Read &mate1, Read &mate2) {
       embed_wrapper_pair(mate1, mate2, region_r1, region_f2, flag_r1, flag_f2,
                          best_r1, best_f2, best_r1f2, next_r1f2, '-');
 
-    delete[] flag_f1;
-    delete[] flag_r1;
-    delete[] flag_f2;
-    delete[] flag_r2;
-
     end = std::chrono::system_clock::now();
     elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
     embedding_time += elapsed.count();
@@ -1525,6 +1515,11 @@ void AccAlign::map_paired_read(Read &mate1, Read &mate2) {
       mark_for_extension(mate1, '-', region_r1[best_r1]);
     }
   }
+
+  delete[] flag_f1;
+  delete[] flag_r1;
+  delete[] flag_f2;
+  delete[] flag_r2;
 
   end = std::chrono::system_clock::now();
   elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
