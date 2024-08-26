@@ -1419,11 +1419,6 @@ void AccAlign::map_paired_read(Read &mate1, Read &mate2) {
   elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
   seeding_time += elapsed.count();
 
-  if (!region_f1.size() && !region_r1.size() && !region_f2.size() && !region_r2.size()){
-     // no candidate at all
-    return;
-   }
-
   if (extend_all) {
     int best_f1r2, next_f1r2, best_r1f2, next_r1f2;
     best_f1r2 = next_f1r2 = best_r1f2 = next_r1f2 = INT_MIN;
@@ -1458,34 +1453,30 @@ void AccAlign::map_paired_read(Read &mate1, Read &mate2) {
 
   start = std::chrono::system_clock::now();
   if (!has_f1r2 && !has_r1f2){
-    // no pair found
-    if ((region_f1.size() || region_r1.size()) && (!region_f2.size() && !region_r2.size())) {
-      // only mate1, no mate2
+    pghole_wrapper(mate1, region_f1, region_r1, best_f1, best_r1);
+    pghole_wrapper(mate2, region_f2, region_r2, best_f2, best_r2);
+    if (region_f1.size() || region_r1.size())
       embed_and_mark_best(mate1, region_f1, region_r1, best_f1, best_r1);
-      rescue_mate(mate1, mate2, 0);
-      if (mate2.strand == '*'){
-        mate2.strand = '*';
-        mate2.force_align = true;
-        mate2.pos = mate1.best_region.rs;
-      }
-    } else if ((!region_f1.size() && !region_r1.size()) && (region_f2.size() || region_r2.size())) {
-      // only mate2, no mate1
+    else if (region_f2.size() || region_r2.size())
       embed_and_mark_best(mate2, region_f2, region_r2, best_f2, best_r2);
-      rescue_mate(mate2, mate1, 0);
-      if (mate1.strand == '*' && mate2.strand != '*') {
-        mate1.strand = '*';
-        mate1.force_align = true;
-        mate1.pos = mate2.best_region.rs;
-      }
-    } else {
-      // fwd and rev
-      embed_and_mark_best(mate1, region_f1, region_r1, best_f1, best_r1);
-      embed_and_mark_best(mate2, region_f2, region_r2, best_f2, best_r2);
+    else
+      return;
 
-      if (mate1.best_region.embed_dist < mate2.best_region.embed_dist)
-        rescue_mate(mate1, mate2, mate2.best_region.rs);
-      else
-        rescue_mate(mate2, mate1, mate1.best_region.rs);
+    if (mate1.best_region.embed_dist < mate2.best_region.embed_dist)
+      rescue_mate(mate1, mate2, mate2.best_region.rs);
+    else
+      rescue_mate(mate2, mate1, mate1.best_region.rs);
+
+    if (mate2.strand == '*'){
+      mate2.strand = '*';
+      mate2.force_align = true;
+      mate2.pos = mate1.best_region.rs;
+    }
+
+    if (mate1.strand == '*' && mate2.strand != '*') {
+      mate1.strand = '*';
+      mate1.force_align = true;
+      mate1.pos = mate2.best_region.rs;
     }
 
   } else {
