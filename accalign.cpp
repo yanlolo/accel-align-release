@@ -1493,6 +1493,11 @@ void AccAlign::map_paired_read(Read &mate1, Read &mate2) {
       embed_wrapper_pair(mate1, mate2, region_r1, region_f2, flag_r1, flag_f2,
                          best_r1, best_f2, best_r1f2, next_r1f2, '-');
 
+    delete[] flag_f1;
+    delete[] flag_r1;
+    delete[] flag_f2;
+    delete[] flag_r2;
+    
     end = std::chrono::system_clock::now();
     elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
     embedding_time += elapsed.count();
@@ -1506,11 +1511,6 @@ void AccAlign::map_paired_read(Read &mate1, Read &mate2) {
       mark_for_extension(mate1, '-', region_r1[best_r1]);
     }
   }
-
-  delete[] flag_f1;
-  delete[] flag_r1;
-  delete[] flag_f2;
-  delete[] flag_r2;
 
   end = std::chrono::system_clock::now();
   elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
