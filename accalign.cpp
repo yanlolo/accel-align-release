@@ -554,6 +554,10 @@ void AccAlign::pigeonhole_query_topcov(char *Q,
     }
   }
 
+  for (auto candidate_region: candidate_regions){
+    candidate_region.extend_interval(ref.c_str(), Q, rlen);
+  }
+
   end = std::chrono::system_clock::now();
   elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
   hit_count_time += elapsed.count();
@@ -877,6 +881,10 @@ void AccAlign::pigeonhole_query(char *Q,
       assert(r.rs < MAX_POS);
       candidate_regions.push_back(move(r));
     }
+  }
+
+  for (auto candidate_region: candidate_regions){
+    candidate_region.extend_interval(ref.c_str(), Q, rlen);
   }
 
   end = std::chrono::system_clock::now();
